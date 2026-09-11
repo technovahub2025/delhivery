@@ -3,5 +3,14 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/test_delhivery/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/test_delhivery/favicon.svg", "destination": "/favicon.svg" },
+    { "source": "/test_delhivery/favicon.ico", "destination": "/favicon.ico" },
+    { "source": "/test_delhivery/manifest.json", "destination": "/manifest.json" },
+    { "source": "/test_delhivery/logo192.png", "destination": "/logo192.png" },
+    { "source": "/test_delhivery/logo512.png", "destination": "/logo512.png" },
+    { "source": "/test_delhivery/robots.txt", "destination": "/robots.txt" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
