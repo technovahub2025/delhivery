@@ -1,0 +1,18 @@
+# Serve this application's entry point when /test_delhivery/ is requested.
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /test_delhivery/
+
+  # Serve deployed files and directories directly.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [END]
+
+  # Missing assets must return 404, not another application's HTML.
+  RewriteRule ^assets/ - [END]
+
+  # Keep navigation inside this application.
+  RewriteRule ^ index.html [END]
+</IfModule>
