@@ -21,6 +21,20 @@ The frontend opens at **http://localhost:3001**. On PowerShell use `npm.cmd` if 
 
 `.env.development` configures port 3001 and `REACT_APP_API_BASE_URL=http://localhost:3000/api`. Use `.env.development.local` to override local settings. For deployment set `REACT_APP_API_BASE_URL` to the public backend API URL before building. Never put the Delhivery API token in a frontend environment variable; the backend supplies it.
 
+## Deploy to /test_delhivery/
+
+Set `REACT_APP_API_BASE_URL` to the public backend API URL before building, then run:
+
+```sh
+npm run build
+```
+
+Upload the **contents** of `build/` into the server directory served at `/test_delhivery/`. The deployed layout must include `/test_delhivery/index.html`, `/test_delhivery/assets/`, and the other files from `build/`. Do not upload the source `index.html` or nest the output inside `/test_delhivery/build/`.
+
+Deploy `index.html` and its matching assets together. Upload new assets before replacing `index.html`, and retain previous assets while cached pages may still reference them. The generated HTML references `/test_delhivery/assets/index-*.js` and `/test_delhivery/assets/index-*.css`. Requests for `main.*.js` or `main.*.css` indicate an older Create React App page: replace the deployed HTML with the freshly generated file and clear any server/CDN HTML cache, then hard-refresh the browser.
+
+Verify the script and stylesheet URLs in the deployed HTML return HTTP 200 with JavaScript and CSS content respectively. An HTML fallback response for a missing asset is not a successful deployment.
+
 ## Connected features
 
 - Registration and login call the backend. The application JWT is kept in memory, sent as a Bearer token, and cleared on logout. Remember me retains the email during the current page session; it does not persist the password or JWT.

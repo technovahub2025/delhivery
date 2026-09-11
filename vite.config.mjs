@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    base:"/test_delhivery",
+    base: '/test_delhivery/',
     define: {
       'process.env.REACT_APP_API_BASE_URL': JSON.stringify(
         env.REACT_APP_API_BASE_URL || 'http://localhost:3000/api'
