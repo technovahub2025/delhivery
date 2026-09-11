@@ -1,0 +1,9 @@
+﻿{
+  "short_name": "Powered by Technovahub",
+  "name": "Powered by Technovahub — Shipment workspace",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#101e35",
+  "background_color": "#f5f7fa"
+}

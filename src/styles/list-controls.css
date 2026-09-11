@@ -1,0 +1,131 @@
+.tabs {
+  display: flex;
+  gap: 25px;
+  padding: 0 22px;
+  border-bottom: 1px solid #e9edf3;
+  overflow-x: auto;
+}
+.tabs button {
+  background: none;
+  color: #8b96a6;
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 19px 0 16px;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.tabs button.active {
+  color: #e67439;
+  border-color: #ed7c44;
+}
+.tabs button span {
+  padding: 2px 5px;
+  background: #f3f5f8;
+  border-radius: 4px;
+  font-size: 9px;
+}
+.tabs button.active span {
+  background: #fff0e7;
+}
+.table-toolbar {
+  padding: 19px 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  padding: 0 12px;
+  color: #708096;
+  min-width: 200px;
+  width: 350px;
+}
+.search-input input {
+  font-size: 11px;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 11px 0;
+  outline: 0;
+  box-shadow: none;
+}
+.table-toolbar > input {
+  width: auto;
+  font-size: 10px;
+  min-height: 37px;
+  margin-left: auto;
+}
+.table-toolbar > .demo-pill {
+  margin-left: auto;
+}
+.table-toolbar .btn {
+  font-size: 10px;
+  padding: 10px;
+}
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 17px 22px;
+  border-top: 1px solid #edf0f4;
+  color: #708096;
+  font-size: 10px;
+}
+.pagination > div {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.page-number {
+  width: 29px;
+  height: 29px;
+  border-radius: 5px;
+  background: none;
+  color: #8390a3;
+  font-size: 10px;
+}
+.page-number.active {
+  background: #fff0e6;
+  color: #e3763e;
+}
+.row-actions {
+  position: relative;
+}
+.row-menu {
+  position: fixed;
+  right: 35px;
+  top: auto;
+  min-width: 170px;
+  margin-top: -4px;
+}
+.row-menu > button {
+  font-size: 11px;
+}
+.empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: #a3aebd;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+.empty > svg {
+  margin-bottom: 15px;
+  color: #bdc8d5;
+}
+.empty h3 {
+  color: #67768d;
+  font-size: 14px;
+}
+.empty p {
+  font-size: 11px;
+  color: #708096;
+  margin-top: 8px;
+}

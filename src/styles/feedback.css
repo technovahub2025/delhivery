@@ -1,0 +1,48 @@
+.skeletons {
+  width: 100%;
+  padding: 25px;
+  display: grid;
+  gap: 17px;
+}
+.skeleton {
+  height: 48px;
+  border-radius: 7px;
+  background: linear-gradient(100deg, #eef1f5 20%, #fafbfd 40%, #eef1f5 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.skeleton:nth-child(2) {
+  width: 75%;
+}
+.skeleton:nth-child(4) {
+  width: 55%;
+}
+.mt-6 {
+  margin-top: 24px;
+}
+.w-full {
+  width: 100%;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

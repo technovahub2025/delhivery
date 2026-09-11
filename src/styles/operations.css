@@ -1,0 +1,121 @@
+.heading-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.heading-with-action > .btn {
+  margin-bottom: 26px;
+  font-size: 11px;
+}
+.warehouse-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+}
+.warehouse-card h2 {
+  font-size: 17px;
+}
+.warehouse-card .section-head {
+  margin-bottom: 16px;
+}
+.warehouse-info {
+  margin: 21px 0 24px;
+}
+.warehouse-info p {
+  display: flex;
+  gap: 11px;
+  margin: 14px 0;
+  font-size: 11px;
+  color: #8b99ac;
+  align-items: flex-start;
+}
+.warehouse-info p > svg {
+  margin-top: 2px;
+}
+.warehouse-info strong {
+  font-weight: 500;
+  color: #7b8ca3;
+}
+.warehouse-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid #edf0f5;
+  padding-top: 16px;
+  font-size: 9px;
+}
+.warehouse-footer .text-link {
+  font-size: 10px;
+}
+.warehouse-footer .pulse-dot {
+  margin-right: 4px;
+  width: 5px;
+  height: 5px;
+}
+.add-warehouse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  min-height: 270px;
+  border: 1px dashed #d4deea;
+  background: #f9fbfd;
+  border-radius: 10px;
+  color: #8799af;
+}
+.add-warehouse > span {
+  background: #edf2f8;
+  border: 1px solid #e3eaf3;
+  border-radius: 50%;
+  width: 49px;
+  height: 49px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 17px;
+}
+.add-warehouse strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b809a;
+}
+.add-warehouse p {
+  font-size: 11px;
+  margin-top: 8px;
+}
+.pickup-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-bottom: 24px;
+}
+.pickup-summary > .card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.pickup-summary h2 {
+  font-size: 15px;
+}
+.pickup-summary p {
+  font-size: 11px;
+  color: #708096;
+  margin-top: 4px;
+}
+.json-preview {
+  margin-top: 16px;
+  background: #132139;
+  border-radius: 8px;
+  color: #b9d6cd;
+  font-size: 11px;
+  line-height: 1.9;
+  padding: 22px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.json-preview + p {
+  margin-top: 15px !important;
+  font-size: 11px !important;
+}

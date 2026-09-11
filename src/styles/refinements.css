@@ -1,0 +1,78 @@
+.btn {
+  background: #c95720;
+}
+.btn:hover {
+  background: #b94b16;
+}
+.text-link {
+  color: #b65322;
+}
+.nav-item {
+  font-size: 12px;
+}
+.nav-group > p {
+  font-size: 9px;
+}
+.breadcrumb,
+.global-search input {
+  font-size: 11px;
+}
+.stat-top {
+  font-size: 11px;
+}
+.stat-bottom small {
+  font-size: 9px;
+}
+.section-head p,
+.chart-legend,
+.chart-x,
+.chart-y,
+.chart-foot,
+.status-legend > div {
+  font-size: 10px;
+}
+.quick-card strong {
+  font-size: 12px;
+}
+.quick-card small {
+  font-size: 10px;
+}
+th {
+  font-size: 9px;
+}
+td,
+.table-link {
+  font-size: 12px;
+}
+td small {
+  font-size: 10px;
+}
+.badge {
+  font-size: 10px;
+}
+.badge.in-transit,
+.badge.scheduled {
+  color: #41669e;
+}
+.badge.delivered,
+.badge.completed,
+.badge.serviceable,
+.badge.primary {
+  color: #28784f;
+}
+.badge.pending-pickup {
+  color: #926622;
+}
+.badge.cancelled,
+.badge.unavailable {
+  color: #ac4d4d;
+}
+.payment-tag {
+  font-size: 9px;
+}
+.field input::placeholder {
+  color: #708096;
+}
+.auth-top > span:last-child {
+  color: #708096;
+}
