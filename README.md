@@ -11,6 +11,12 @@ npm install
 npm start
 ```
 
+You can also use `npm run dev` to start the frontend.
+
+Vite handles development and production builds using `vite.config.mjs`. Run `npm run preview` to preview the production build locally. The existing Jest tests continue to use `react-scripts`.
+
+For Vercel, import this repository and set `REACT_APP_API_BASE_URL` to your public backend API URL (including `/api`) in the project environment variables before deploying. `vercel.json` configures the Vite build, the `build` output directory, and SPA route fallback. The backend must allow requests from your deployed frontend origin.
+
 The frontend opens at **http://localhost:3001**. On PowerShell use `npm.cmd` if script execution policy blocks `npm`.
 
 `.env.development` configures port 3001 and `REACT_APP_API_BASE_URL=http://localhost:3000/api`. Use `.env.development.local` to override local settings. For deployment set `REACT_APP_API_BASE_URL` to the public backend API URL before building. Never put the Delhivery API token in a frontend environment variable; the backend supplies it.
