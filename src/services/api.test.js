@@ -69,7 +69,9 @@ test.each([
   fetch.mockResolvedValueOnce(response(value));
   await expect(apiRequest('/test')).rejects.toThrow('Rejected');
   expect(window.alert).toHaveBeenCalledTimes(1);
-  expect(window.alert).toHaveBeenCalledWith('Rejected');
+  expect(window.alert).toHaveBeenCalledWith(
+    'Sorry, we could not complete your request. Please try again later.'
+  );
 });
 
 test.each([
@@ -94,7 +96,9 @@ test.each([
   fetch.mockResolvedValueOnce(response({ message: 'Service unavailable' }, 503));
   await expect(apiRequest(path)).rejects.toThrow('Service unavailable');
   expect(window.alert).toHaveBeenCalledTimes(1);
-  expect(window.alert).toHaveBeenCalledWith('Service unavailable');
+  expect(window.alert).toHaveBeenCalledWith(
+    'Sorry, we could not complete your request. Please try again later.'
+  );
 });
 
 test('successful requests do not alert', async () => {
@@ -122,14 +126,18 @@ test('empty coverage is a result, not an error', () => {
 test('HTML, empty bodies and network failures have useful errors', async () => {
   fetch.mockResolvedValueOnce({ ok: true, status: 200, text: async () => '<html>frontend</html>' });
   await expect(apiRequest('/test')).rejects.toThrow('invalid response');
-  expect(window.alert).toHaveBeenLastCalledWith(expect.stringContaining('invalid response'));
+  expect(window.alert).toHaveBeenLastCalledWith(
+    'Sorry, we could not complete your request. Please try again later.'
+  );
   fetch.mockResolvedValueOnce({ ok: true, status: 200, text: async () => '' });
   await expect(apiRequest('/test')).rejects.toThrow('empty response');
-  expect(window.alert).toHaveBeenLastCalledWith('The backend returned an empty response.');
+  expect(window.alert).toHaveBeenLastCalledWith(
+    'Sorry, we could not complete your request. Please try again later.'
+  );
   fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
   await expect(apiRequest('/test')).rejects.toThrow('Cannot reach the backend');
   expect(window.alert).toHaveBeenLastCalledWith(
-    expect.stringContaining('Cannot reach the backend')
+    'Unable to connect right now. Please check your connection and try again later.'
   );
 });
 
@@ -148,7 +156,9 @@ test('timeout ends the request without automatically retrying a mutation', async
   await pending;
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(window.alert).toHaveBeenCalledTimes(1);
-  expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('The request timed out'));
+  expect(window.alert).toHaveBeenCalledWith(
+    'This is taking longer than usual. Please check the status before trying again.'
+  );
 });
 
 test('logout clears the application JWT', async () => {

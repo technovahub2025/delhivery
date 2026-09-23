@@ -89,7 +89,13 @@ export async function apiRequest(path, { method = 'GET', query, body, signal } =
         'Cannot reach the backend. Check that it is running and the API URL is correct.'
       );
     // Every screen shares this service; alert once before its local error handling runs.
-    window.alert(failure.message || 'Request failed. Please try again.');
+    const alertMessage =
+      error.name === 'AbortError'
+        ? 'This is taking longer than usual. Please check the status before trying again.'
+        : error instanceof TypeError
+          ? 'Unable to connect right now. Please check your connection and try again later.'
+          : 'Sorry, we could not complete your request. Please try again later.';
+    window.alert(alertMessage);
     throw failure;
   } finally {
     signal?.removeEventListener('abort', abort);
