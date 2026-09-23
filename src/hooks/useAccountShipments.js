@@ -29,22 +29,39 @@ export default function useAccountShipments(token, setShipments) {
         for (let page = 1; ; page += 1) {
           const data = unwrap(await api.shipments({ page, limit: 100 }, controller.signal));
           if (controller.signal.aborted) return;
-          if (!Array.isArray(data?.shipments) || !Number.isSafeInteger(data.total) ||
-              data.total < 0 || data.page !== page || data.limit !== 100 ||
-              (total !== undefined && total !== data.total)) {
-            throw new Error('The backend returned an invalid or changing shipment list. Please retry.');
+          if (
+            !Array.isArray(data?.shipments) ||
+            !Number.isSafeInteger(data.total) ||
+            data.total < 0 ||
+            data.page !== page ||
+            data.limit !== 100 ||
+            (total !== undefined && total !== data.total)
+          ) {
+            throw new Error(
+              'The backend returned an invalid or changing shipment list. Please retry.'
+            );
           }
           total = data.total;
           for (const shipment of data.shipments) {
-            if (typeof shipment.id !== 'string' || !shipment.id || ids.has(shipment.id) ||
-                typeof shipment.status !== 'string' || typeof shipment.date !== 'string') {
-              throw new Error('The backend returned invalid or duplicate shipment records. Please retry.');
+            if (
+              typeof shipment.id !== 'string' ||
+              !shipment.id ||
+              ids.has(shipment.id) ||
+              typeof shipment.status !== 'string' ||
+              typeof shipment.date !== 'string'
+            ) {
+              throw new Error(
+                'The backend returned invalid or duplicate shipment records. Please retry.'
+              );
             }
             ids.add(shipment.id);
             records.push(shipment);
           }
-          if (records.length > total || data.shipments.length > 100 ||
-              (records.length < total && data.shipments.length === 0)) {
+          if (
+            records.length > total ||
+            data.shipments.length > 100 ||
+            (records.length < total && data.shipments.length === 0)
+          ) {
             throw new Error('The backend returned an incomplete shipment list. Please retry.');
           }
           if (records.length === total) break;

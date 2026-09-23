@@ -79,6 +79,13 @@ export default function WorkspacePages({
     case 'events':
       return <WebhookEventsPage />;
     default:
-      return <DashboardPage shipments={shipments} load={workspace.shipmentLoad} navigate={navigate} onDetails={onDetails} />;
+      return (
+        <DashboardPage
+          shipments={shipments}
+          load={workspace.shipmentLoad}
+          navigate={navigate}
+          onDetails={onDetails}
+        />
+      );
   }
 }

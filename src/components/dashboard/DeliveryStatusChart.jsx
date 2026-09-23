@@ -11,7 +11,7 @@ export default function DeliveryStatusChart({ shipments, stats }) {
   let offset = 0;
   const segments = categories.map(([, count, color]) => {
     const start = offset;
-    offset += shipments.length ? count / shipments.length * 100 : 0;
+    offset += shipments.length ? (count / shipments.length) * 100 : 0;
     return `${color} ${start}% ${offset}%`;
   });
   return (
@@ -28,9 +28,7 @@ export default function DeliveryStatusChart({ shipments, stats }) {
       <div
         className="donut"
         style={{
-          background: !shipments.length
-            ? '#edf0f4'
-            : `conic-gradient(${segments.join(', ')})`,
+          background: !shipments.length ? '#edf0f4' : `conic-gradient(${segments.join(', ')})`,
         }}
       >
         <div>

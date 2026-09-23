@@ -38,8 +38,16 @@ export default function ShipmentsPage({
       <div className="page-heading">
         <div>
           <div className="eyebrow muted">SHIPMENT MANAGEMENT</div>
-          <h1>{load.status === 'success' ? 'All your shipments. One place.' : 'Shipments created in this session'}</h1>
-          <p>{load.status === 'success' ? 'Stay on top of every package, from pickup to doorstep.' : 'These records do not include your existing account history.'}</p>
+          <h1>
+            {load.status === 'success'
+              ? 'All your shipments. One place.'
+              : 'Shipments created in this session'}
+          </h1>
+          <p>
+            {load.status === 'success'
+              ? 'Stay on top of every package, from pickup to doorstep.'
+              : 'These records do not include your existing account history.'}
+          </p>
         </div>
         <Button onClick={() => navigate('create')}>
           <Plus size={17} />

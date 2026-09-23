@@ -50,14 +50,18 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
           Your shipping workspace
         </span>
       </div>
-      {load.status !== 'success' ? <ShipmentLoadState load={load} /> : <>
-      <ShipmentStats stats={stats} navigate={navigate} />
-      <div className="chart-grid">
-        <ShipmentActivityChart shipments={shipments} period={period} setPeriod={setPeriod} />
-        <DeliveryStatusChart shipments={shipments} stats={stats} />
-      </div>
-      <RecentShipmentsTable shipments={shipments} navigate={navigate} onDetails={onDetails} />
-      </>}
+      {load.status !== 'success' ? (
+        <ShipmentLoadState load={load} />
+      ) : (
+        <>
+          <ShipmentStats stats={stats} navigate={navigate} />
+          <div className="chart-grid">
+            <ShipmentActivityChart shipments={shipments} period={period} setPeriod={setPeriod} />
+            <DeliveryStatusChart shipments={shipments} stats={stats} />
+          </div>
+          <RecentShipmentsTable shipments={shipments} navigate={navigate} onDetails={onDetails} />
+        </>
+      )}
       <QuickActions navigate={navigate} />
       <div className="page-foot">
         <span>

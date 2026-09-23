@@ -25,7 +25,16 @@ const lastRequest = () => {
 
 beforeEach(() => {
   window.scrollTo = jest.fn();
-  global.fetch = jest.fn().mockRejectedValue(new Error('Unexpected request'));
+  global.fetch = jest.fn().mockImplementation((url) => {
+    if (url.includes('/delhivery/shipments?'))
+      return Promise.resolve(
+        reply({
+          success: true,
+          data: { shipments: [], total: 0, page: 1, limit: 100 },
+        })
+      );
+    return Promise.reject(new Error('Unexpected request'));
+  });
   setAuthToken(null);
 });
 afterEach(() => {
@@ -66,6 +75,67 @@ async function addWarehouse() {
   );
   await screen.findByRole('heading', { name: 'Test Hub' });
 }
+
+test('account source errors show retry without false empty statistics', async () => {
+  fetch.mockImplementation(() =>
+    Promise.resolve(
+      reply(
+        {
+          success: false,
+          message: 'Account shipment source required',
+        },
+        503
+      )
+    )
+  );
+  await login();
+  expect(await screen.findByRole('alert')).toHaveTextContent('Account shipment source required');
+  expect(screen.queryByText('No shipments yet')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Total shipments/ })).not.toBeInTheDocument();
+  expect(lastRequest()).toMatchObject({
+    url: 'http://localhost:3000/api/delhivery/shipments?page=1&limit=100',
+    headers: { Authorization: 'Bearer test-jwt' },
+  });
+  respond({ success: true, data: { shipments: [], total: 0, page: 1, limit: 100 } });
+  fireEvent.click(screen.getByRole('button', { name: 'Retry shipment loading' }));
+  await screen.findByText('No shipments yet');
+});
+
+test('fetched records populate statistics, activity and recent shipments', async () => {
+  const now = new Date();
+  const date = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
+  fetch.mockImplementation(() =>
+    Promise.resolve(
+      reply({
+        success: true,
+        data: {
+          shipments: [
+            {
+              id: 'TEST-AWB',
+              customer: 'Test Recipient',
+              date,
+              status: 'Delivered',
+              destination: 'Delhi',
+            },
+          ],
+          total: 1,
+          page: 1,
+          limit: 100,
+        },
+      })
+    )
+  );
+  await login();
+  await screen.findByText('TEST-AWB');
+  expect(screen.getByRole('button', { name: /Total shipments 1/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Delivered 1/ })).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: /This week shipments:/ })).toBeInTheDocument();
+  expect(within(screen.getByRole('table')).getByText('Test Recipient')).toBeInTheDocument();
+});
 
 test('login uses backend credentials, rejects invalid login and clears token on logout', async () => {
   render(<App />);
@@ -116,7 +186,7 @@ test('registration validates confirmation then posts only required account field
   });
 });
 
-test('all pages render empty without automatic provider requests', async () => {
+test('all pages render after the automatic account shipment request', async () => {
   await login();
   for (const name of [
     'Shipments',
@@ -135,7 +205,7 @@ test('all pages render empty without automatic provider requests', async () => {
     navigate(name);
   expect(screen.getByText('No shipment activity')).toBeInTheDocument();
   expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
-  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledTimes(2);
   navigate('Create shipment');
   expect(mainButton('Continue')).toBeDisabled();
 });
@@ -208,7 +278,7 @@ test('tracking uses references independently of local shipments', async () => {
 test('waybills are allocated only on submit and provider document links can be opened', async () => {
   await login();
   navigate('Waybill management');
-  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledTimes(2);
   fill([['Number of waybills', '2']]);
   respond({ success: true, data: '123456789,123456790' });
   fireEvent.click(mainButton('Generate waybills'));
