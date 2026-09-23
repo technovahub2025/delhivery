@@ -2,18 +2,19 @@ import { useRef, useState } from 'react';
 
 import { api, unwrap, shipmentPayload } from '../services/api';
 
-import { initialPickups, initialShipments, initialWarehouses } from '../data/demo';
+import { initialPickups, initialShipments } from '../data/demo';
 import useAccountShipments from './useAccountShipments';
+import useSavedWarehouses from './useSavedWarehouses';
 
 // Shared in-memory data belongs to the workspace; page-only form state stays on each page.
-export default function useDemoWorkspace(token) {
+export default function useDemoWorkspace(token, user) {
   const generation = useRef(0);
   const session = generation.current;
   const scoped = (setter) => (update) => {
     if (generation.current === session) setter(update);
   };
   const [shipments, setShipments] = useState(initialShipments);
-  const [warehouses, setWarehouses] = useState(initialWarehouses);
+  const { warehouses, setWarehouses, warehouseError, reset: resetWarehouses } = useSavedWarehouses(user);
   const [pickups, setPickups] = useState(initialPickups);
   const shipmentLoad = useAccountShipments(token, setShipments);
 
@@ -57,13 +58,14 @@ export default function useDemoWorkspace(token) {
       shipmentLoad.cancel();
       generation.current += 1;
       setShipments([]);
-      setWarehouses([]);
+      resetWarehouses();
       setPickups([]);
     },
     shipments,
     shipmentLoad,
     setShipments: scoped(setShipments),
     warehouses,
+    warehouseError,
     setWarehouses: scoped(setWarehouses),
     pickups,
     setPickups: scoped(setPickups),

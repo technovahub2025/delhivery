@@ -21,7 +21,7 @@ export default function App() {
   const [detailId, setDetailId] = useState(null);
   const [tableSearch, setTableSearch] = useState('');
   const [searchKey, setSearchKey] = useState(0);
-  const workspace = useDemoWorkspace(sessionToken);
+  const workspace = useDemoWorkspace(sessionToken, user);
   const { message, notify } = useToast();
   const details = workspace.shipments.find((shipment) => shipment.id === detailId);
 

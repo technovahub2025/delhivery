@@ -24,6 +24,7 @@ const lastRequest = () => {
 };
 
 beforeEach(() => {
+  localStorage.clear();
   window.scrollTo = jest.fn();
   global.fetch = jest.fn().mockImplementation((url) => {
     if (url.includes('/delhivery/shipments?'))
@@ -42,7 +43,7 @@ afterEach(() => {
   setAuthToken(null);
 });
 async function login() {
-  render(<App />);
+  const view = render(<App />);
   respond({
     success: true,
     token: 'test-jwt',
@@ -54,6 +55,7 @@ async function login() {
   ]);
   fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
   await screen.findByRole('heading', { name: /every delivery starts here/i });
+  return view;
 }
 async function addWarehouse() {
   navigate('Warehouses');
@@ -75,6 +77,24 @@ async function addWarehouse() {
   );
   await screen.findByRole('heading', { name: 'Test Hub' });
 }
+
+test('created and edited warehouses survive a refresh and login', async () => {
+  const first = await login();
+  await addWarehouse();
+  fireEvent.click(screen.getByRole('button', { name: 'Edit warehouse' }));
+  fill([['Full address', '99 Updated Road']]);
+  respond({ success: true });
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  first.unmount();
+  await login();
+  navigate('Warehouses');
+  expect(await screen.findByRole('heading', { name: 'Test Hub' })).toBeInTheDocument();
+  expect(screen.getByText('99 Updated Road')).toBeInTheDocument();
+  expect(screen.getByText('Manager')).toBeInTheDocument();
+  navigate('Create shipment');
+  expect(screen.getByRole('radio', { name: /Test Hub/ })).toBeInTheDocument();
+});
 
 test('account source errors show retry without false empty statistics', async () => {
   fetch.mockImplementation(() =>

@@ -5,7 +5,7 @@ import { Badge, Button } from '../../components/ui';
 import PageHeading from '../../components/ui/PageHeading';
 import WarehouseFormDialog from '../../components/warehouses/WarehouseFormDialog';
 
-export default function WarehousesPage({ warehouses, setWarehouses, notify }) {
+export default function WarehousesPage({ warehouses, setWarehouses, notify, error }) {
   const [edit, setEdit] = useState(null);
   return (
     <>
@@ -20,6 +20,7 @@ export default function WarehousesPage({ warehouses, setWarehouses, notify }) {
           Add warehouse
         </Button>
       </div>
+      {error && <p className="error" role="alert">{error}</p>}
       <div className="warehouse-grid">
         {warehouses.map((w) => (
           <section className="card warehouse-card" key={w.id}>
