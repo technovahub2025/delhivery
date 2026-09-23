@@ -109,8 +109,9 @@ test.each(navGroups.flatMap(([, items]) => items.map(([id, label]) => [id, label
     fetch.mockClear();
     render(<App />);
     expect(screen.queryByRole('button', { name: 'Log in' })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('navigation')).getByRole('button', { name: label, exact: true }))
-      .toHaveAttribute('aria-current', 'page');
+    expect(
+      within(screen.getByRole('navigation')).getByRole('button', { name: label, exact: true })
+    ).toHaveAttribute('aria-current', 'page');
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer test-jwt');
     expect(fetch.mock.calls.some(([url]) => url.includes('/auth/login'))).toBe(false);
@@ -131,7 +132,10 @@ test('logout clears the saved session so refresh stays logged out', async () => 
 test.each([
   '{broken',
   JSON.stringify({ token: 'token', user: null }),
-  JSON.stringify({ token: `header.${btoa(JSON.stringify({ exp: 1 }))}.signature`, user: { email: 'test@example.com' } }),
+  JSON.stringify({
+    token: `header.${btoa(JSON.stringify({ exp: 1 }))}.signature`,
+    user: { email: 'test@example.com' },
+  }),
 ])('invalid or expired saved sessions return to login', (saved) => {
   sessionStorage.setItem(SESSION_KEY, saved);
   render(<App />);
