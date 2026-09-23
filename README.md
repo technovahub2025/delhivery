@@ -57,7 +57,7 @@ This parent rule belongs in the hosting document root, not inside `test_delhiver
 
 ## Connected features
 
-- Registration and login call the backend. The application JWT is kept in memory, sent as a Bearer token, and cleared on logout. Remember me retains the email during the current page session; it does not persist the password or JWT.
+- Registration and login call the backend. The application JWT, user and current page are saved in tab session storage, scoped to the API, so refreshing restores login and the same screen. The token is restored before API loading starts and sent as a Bearer token. Logout clears the saved session; expired JWTs require login again. Form drafts are not persisted. Remember me retains the email during the current page session; passwords are never stored.
 - Standard/heavy pincode lookup, delivery estimates, shipping charges, tracking by waybill/reference, and waybill allocation use the documented GET routes. Allocation only runs after clicking Generate waybills.
 - Shipment creation, editing, cancellation and e-waybill updates, warehouse creation/editing and pickup requests use the documented POST routes. Local records update only after an accepted response. Requests are not automatically retried.
 - Shipment weights entered in kilograms are converted to grams. Order references and registered warehouse names are supplied by the user. Warehouse return addresses use the entered warehouse address.
@@ -68,7 +68,7 @@ This parent rule belongs in the hosting document root, not inside `test_delhiver
 
 The backend saves new app-created shipments in MongoDB and exposes an authenticated, paginated `GET /api/delhivery/shipments`. Each login sees only its own saved shipments. Creation, edits, cancellation and e-waybill updates persist after provider acceptance. The dashboard loads saved records after login; historical shipments created before this feature or outside this app are not included. Stored statuses are not automatically refreshed from Delhivery; use Track shipment for the latest carrier status. See [shipment integration status](SHIPMENT_INTEGRATION.md).
 
-Warehouse and pickup lists remain session-only. Existing shipments can still be tracked and their documents retrieved by waybill/reference. Enter an existing registered warehouse name directly when creating a shipment or requesting pickup.
+Successfully created/edited warehouses are remembered in local browser storage, scoped to the API and signed-in account, and restored after refresh and login. They do not sync across devices; clearing browser data removes this local list. Warehouses created before this change cannot be recovered automatically because the backend has no warehouse list endpoint. Pickup lists remain session-only. Existing shipments can still be tracked and their documents retrieved by waybill/reference. Enter an existing registered warehouse name directly when creating a shipment or requesting pickup.
 
 The webhook POST route is for carrier callbacks. The frontend does not send synthetic callbacks; event history remains unavailable until the backend exposes a read endpoint. There is no password reset endpoint.
 

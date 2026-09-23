@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import App from './App';
 import { setAuthToken } from './services/api';
+import { navGroups } from './config/navigation';
+import { SESSION_KEY } from './services/session';
 
 const reply = (data, status = 200) => ({
   ok: status < 400,
@@ -25,6 +27,7 @@ const lastRequest = () => {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   window.scrollTo = jest.fn();
   global.fetch = jest.fn().mockImplementation((url) => {
     if (url.includes('/delhivery/shipments?'))
@@ -78,7 +81,7 @@ async function addWarehouse() {
   await screen.findByRole('heading', { name: 'Test Hub' });
 }
 
-test('created and edited warehouses survive a refresh and login', async () => {
+test('created and edited warehouses survive a refresh', async () => {
   const first = await login();
   await addWarehouse();
   fireEvent.click(screen.getByRole('button', { name: 'Edit warehouse' }));
@@ -87,13 +90,53 @@ test('created and edited warehouses survive a refresh and login', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   first.unmount();
-  await login();
-  navigate('Warehouses');
+  setAuthToken(null);
+  render(<App />);
   expect(await screen.findByRole('heading', { name: 'Test Hub' })).toBeInTheDocument();
   expect(screen.getByText('99 Updated Road')).toBeInTheDocument();
   expect(screen.getByText('Manager')).toBeInTheDocument();
   navigate('Create shipment');
   expect(screen.getByRole('radio', { name: /Test Hub/ })).toBeInTheDocument();
+});
+
+test.each(navGroups.flatMap(([, items]) => items.map(([id, label]) => [id, label])))(
+  'refresh restores the authenticated %s page',
+  async (id, label) => {
+    const first = await login();
+    navigate(label);
+    first.unmount();
+    setAuthToken(null);
+    fetch.mockClear();
+    render(<App />);
+    expect(screen.queryByRole('button', { name: 'Log in' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('navigation')).getByRole('button', { name: label, exact: true }))
+      .toHaveAttribute('aria-current', 'page');
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer test-jwt');
+    expect(fetch.mock.calls.some(([url]) => url.includes('/auth/login'))).toBe(false);
+  }
+);
+
+test('logout clears the saved session so refresh stays logged out', async () => {
+  const first = await login();
+  navigate('Warehouses');
+  fireEvent.click(screen.getByRole('button', { name: 'Profile menu' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
+  expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
+  first.unmount();
+  render(<App />);
+  expect(screen.getByRole('button', { name: 'Log in' })).toBeInTheDocument();
+});
+
+test.each([
+  '{broken',
+  JSON.stringify({ token: 'token', user: null }),
+  JSON.stringify({ token: `header.${btoa(JSON.stringify({ exp: 1 }))}.signature`, user: { email: 'test@example.com' } }),
+])('invalid or expired saved sessions return to login', (saved) => {
+  sessionStorage.setItem(SESSION_KEY, saved);
+  render(<App />);
+  expect(screen.getByRole('button', { name: 'Log in' })).toBeInTheDocument();
+  expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
 });
 
 test('account source errors show retry without false empty statistics', async () => {
