@@ -74,7 +74,7 @@ export default function RecentShipmentsTable({ shipments, navigate, onDetails })
         </table>
       </div>
       {!shipments.length && (
-        <Empty title="No shipments yet" description="The connected shipment source returned no records." />
+        <Empty title="No shipments yet" description="No saved shipments for your login yet. Create a shipment through this app to see it here. Older Delhivery account shipments are not included." />
       )}
     </section>
   );

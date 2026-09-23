@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, unwrap } from '../services/api';
 
-// Only a complete, validated account result may replace the dashboard records.
-// The backend currently returns an explicit unavailable response until a source is verified.
+// Publish only a complete list of saved app-created shipments for this login.
 export default function useAccountShipments(token, setShipments) {
   const active = useRef(null);
   const [attempt, setAttempt] = useState(0);

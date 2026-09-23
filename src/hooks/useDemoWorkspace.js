@@ -18,14 +18,15 @@ export default function useDemoWorkspace(token) {
   const shipmentLoad = useAccountShipments(token, setShipments);
 
   async function createShipment(data) {
-    const result = unwrap(await api.createShipment(shipmentPayload(data)));
+    const response = await api.createShipment(shipmentPayload(data));
+    const result = unwrap(response);
     const parcel = result.packages?.[0] || result;
     const waybill = parcel.waybill || parcel.wbn || parcel.AWB;
     if (!waybill)
       throw new Error(
         'The response did not include a waybill. Check your order in the shipping service before submitting again.'
       );
-    const shipment = {
+    const shipment = response.shipment || {
       ...data,
       id: String(waybill),
       date: new Date().toLocaleDateString('en-CA'),
@@ -42,7 +43,12 @@ export default function useDemoWorkspace(token) {
       status: 'Pending pickup',
       ewaybill: '',
     };
-    if (generation.current === session) setShipments((list) => [shipment, ...list]);
+    if (generation.current === session) {
+      // Prevent an older in-flight list request from erasing the newly saved shipment.
+      shipmentLoad.cancel();
+      setShipments((list) => [shipment, ...list.filter((item) => item.id !== shipment.id)]);
+      if (shipmentLoad.status !== 'success') shipmentLoad.retry();
+    }
     return shipment;
   }
 

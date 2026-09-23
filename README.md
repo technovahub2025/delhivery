@@ -66,7 +66,9 @@ This parent rule belongs in the hosting document root, not inside `test_delhiver
 
 ## Backend limitations
 
-The supplied backend has no GET routes for shipment, warehouse or pickup lists. These lists and dashboard counts show records created in the current session and clear on refresh/logout. Existing shipments can still be tracked and their documents retrieved by waybill/reference. Enter an existing registered warehouse name directly when creating a shipment or requesting pickup.
+The backend saves new app-created shipments in MongoDB and exposes an authenticated, paginated `GET /api/delhivery/shipments`. Each login sees only its own saved shipments. Creation, edits, cancellation and e-waybill updates persist after provider acceptance. The dashboard loads saved records after login; historical shipments created before this feature or outside this app are not included. Stored statuses are not automatically refreshed from Delhivery; use Track shipment for the latest carrier status. See [shipment integration status](SHIPMENT_INTEGRATION.md).
+
+Warehouse and pickup lists remain session-only. Existing shipments can still be tracked and their documents retrieved by waybill/reference. Enter an existing registered warehouse name directly when creating a shipment or requesting pickup.
 
 The webhook POST route is for carrier callbacks. The frontend does not send synthetic callbacks; event history remains unavailable until the backend exposes a read endpoint. There is no password reset endpoint.
 

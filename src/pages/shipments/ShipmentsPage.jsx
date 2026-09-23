@@ -40,12 +40,12 @@ export default function ShipmentsPage({
           <div className="eyebrow muted">SHIPMENT MANAGEMENT</div>
           <h1>
             {load.status === 'success'
-              ? 'All your shipments. One place.'
+              ? 'Your app-created shipments'
               : 'Shipments created in this session'}
           </h1>
           <p>
             {load.status === 'success'
-              ? 'Stay on top of every package, from pickup to doorstep.'
+              ? 'Saved shipments created by your login. Older account shipments are not included. Use tracking for the latest carrier status.'
               : 'These records do not include your existing account history.'}
           </p>
         </div>

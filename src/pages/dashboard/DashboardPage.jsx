@@ -30,7 +30,8 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
           <h1>
             Every delivery starts here<span className="text-orange">.</span>
           </h1>
-          <p>Shipments from your connected Delhivery account.</p>
+          <p>Shipments created through this app by your login. Older Delhivery account shipments are not included.</p>
+          <p>Charts show saved statuses. Use Track shipment for the latest carrier status.</p>
         </div>
         <Button onClick={() => navigate('create')}>
           <Plus size={17} />
