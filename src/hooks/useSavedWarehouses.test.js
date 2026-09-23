@@ -26,7 +26,9 @@ test('handles corrupt storage and reports failed persistence without losing acce
   const { result } = renderHook(() => useSavedWarehouses({ id: 'a' }));
   expect(result.current.warehouses).toEqual([]);
   expect(result.current.warehouseError).toMatch(/could not be loaded/);
-  jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Full'); });
+  jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('Full');
+  });
   act(() => result.current.setWarehouses([hub]));
   expect(result.current.warehouses).toEqual([hub]);
   expect(result.current.warehouseError).toMatch(/could not remember/);

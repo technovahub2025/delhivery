@@ -35,7 +35,8 @@ export default function useSavedWarehouses(user) {
     try {
       localStorage.setItem(key, JSON.stringify(records));
     } catch {
-      error = 'Warehouse saved with the shipping service, but this browser could not remember it. It may disappear after a refresh.';
+      error =
+        'Warehouse saved with the shipping service, but this browser could not remember it. It may disappear after a refresh.';
     }
     current.current = { key, records };
     setState({ key, records, error });

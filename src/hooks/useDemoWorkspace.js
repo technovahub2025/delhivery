@@ -14,7 +14,12 @@ export default function useDemoWorkspace(token, user) {
     if (generation.current === session) setter(update);
   };
   const [shipments, setShipments] = useState(initialShipments);
-  const { warehouses, setWarehouses, warehouseError, reset: resetWarehouses } = useSavedWarehouses(user);
+  const {
+    warehouses,
+    setWarehouses,
+    warehouseError,
+    reset: resetWarehouses,
+  } = useSavedWarehouses(user);
   const [pickups, setPickups] = useState(initialPickups);
   const shipmentLoad = useAccountShipments(token, setShipments);
 

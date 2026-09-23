@@ -74,7 +74,12 @@ export default function WorkspacePages({
       return <ShippingDocumentsPage shipments={shipments} notify={notify} />;
     case 'warehouses':
       return (
-        <WarehousesPage warehouses={warehouses} setWarehouses={setWarehouses} notify={notify} error={workspace.warehouseError} />
+        <WarehousesPage
+          warehouses={warehouses}
+          setWarehouses={setWarehouses}
+          notify={notify}
+          error={workspace.warehouseError}
+        />
       );
     case 'events':
       return <WebhookEventsPage />;

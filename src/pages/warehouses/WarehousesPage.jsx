@@ -20,7 +20,11 @@ export default function WarehousesPage({ warehouses, setWarehouses, notify, erro
           Add warehouse
         </Button>
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="warehouse-grid">
         {warehouses.map((w) => (
           <section className="card warehouse-card" key={w.id}>
