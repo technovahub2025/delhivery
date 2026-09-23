@@ -18,10 +18,28 @@ function documentErrorMessage(error) {
     : message;
 }
 
+function documentsMissing(message) {
+  return /\b(?:documents?|files?|EPOD|proof of delivery)\b.*\b(?:not found|not available|unavailable|not added)\b|\bno\s+(?:documents?|files?)\b/i.test(
+    message
+  );
+}
+
+function emptyDocuments(value) {
+  if (value == null || value === '') return true;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value !== 'object') return false;
+  if (Object.keys(value).length === 0) return true;
+  for (const key of ['data', 'documents', 'files']) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) return emptyDocuments(value[key]);
+  }
+  return false;
+}
+
 export default function ShippingDocumentsPage({ shipments }) {
   const [waybill, setWaybill] = useState('');
   const [type, setType] = useState('label');
   const [result, setResult] = useState(null);
+  const [notFound, setNotFound] = useState(false);
   const { busy, error, run } = useApiAction();
   return (
     <>
@@ -36,16 +54,26 @@ export default function ShippingDocumentsPage({ shipments }) {
             event.preventDefault();
             if (!waybill.trim()) return;
             setResult(null);
+            setNotFound(false);
             run(async () => {
               try {
                 const response = await (type === 'label'
                   ? api.label(waybill.trim())
                   : api.documents(waybill.trim()));
                 assertProviderSuccess(response);
-                setResult(unwrap(response));
+                if (emptyDocuments(response)) {
+                  setNotFound(true);
+                } else {
+                  setResult(unwrap(response));
+                }
               } catch (failure) {
                 setResult(null);
-                throw new Error(documentErrorMessage(failure));
+                const message = documentErrorMessage(failure);
+                if (documentsMissing(message)) {
+                  setNotFound(true);
+                  return;
+                }
+                throw new Error(message);
               }
             });
           }}
@@ -70,6 +98,7 @@ export default function ShippingDocumentsPage({ shipments }) {
               onChange={(e) => {
                 setType(e.target.value);
                 setResult(null);
+                setNotFound(false);
               }}
               disabled={busy}
             >
@@ -90,6 +119,11 @@ export default function ShippingDocumentsPage({ shipments }) {
         )}
         {busy ? (
           <Skeleton />
+        ) : notFound ? (
+          <Empty
+            title="No documents found"
+            description="No documents are available for this shipment yet."
+          />
         ) : result ? (
           <>
             <h2>{type === 'label' ? 'Shipping label' : 'Shipment documents'}</h2>
