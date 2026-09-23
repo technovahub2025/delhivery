@@ -68,6 +68,49 @@ test.each([
 ])('provider rejection is an error even with HTTP 200: %j', async (value) => {
   fetch.mockResolvedValueOnce(response(value));
   await expect(apiRequest('/test')).rejects.toThrow('Rejected');
+  expect(window.alert).toHaveBeenCalledTimes(1);
+  expect(window.alert).toHaveBeenCalledWith('Rejected');
+});
+
+test.each([
+  '/auth/login',
+  '/auth/register',
+  '/delhivery/shipments',
+  '/delhivery/shipments/update',
+  '/delhivery/shipments/cancel',
+  '/delhivery/shipments/ewaybill',
+  '/delhivery/shipments/track',
+  '/delhivery/pickups',
+  '/delhivery/warehouses',
+  '/delhivery/warehouses/update',
+  '/delhivery/pincode',
+  '/delhivery/pincode/heavy',
+  '/delhivery/expected-tat',
+  '/delhivery/shipping-cost',
+  '/delhivery/waybills',
+  '/delhivery/shipping-label',
+  '/delhivery/documents',
+])('HTTP failures alert and still reject for %s', async (path) => {
+  fetch.mockResolvedValueOnce(response({ message: 'Service unavailable' }, 503));
+  await expect(apiRequest(path)).rejects.toThrow('Service unavailable');
+  expect(window.alert).toHaveBeenCalledTimes(1);
+  expect(window.alert).toHaveBeenCalledWith('Service unavailable');
+});
+
+test('successful requests do not alert', async () => {
+  await apiRequest('/test');
+  expect(window.alert).not.toHaveBeenCalled();
+});
+
+test('requests cancelled by the caller do not alert', async () => {
+  const controller = new AbortController();
+  const aborted = Object.assign(new Error('Aborted'), { name: 'AbortError' });
+  fetch.mockImplementationOnce(() => {
+    controller.abort();
+    return Promise.reject(aborted);
+  });
+  await expect(apiRequest('/test', { signal: controller.signal })).rejects.toBe(aborted);
+  expect(window.alert).not.toHaveBeenCalled();
 });
 
 test('empty coverage is a result, not an error', () => {
@@ -79,10 +122,15 @@ test('empty coverage is a result, not an error', () => {
 test('HTML, empty bodies and network failures have useful errors', async () => {
   fetch.mockResolvedValueOnce({ ok: true, status: 200, text: async () => '<html>frontend</html>' });
   await expect(apiRequest('/test')).rejects.toThrow('invalid response');
+  expect(window.alert).toHaveBeenLastCalledWith(expect.stringContaining('invalid response'));
   fetch.mockResolvedValueOnce({ ok: true, status: 200, text: async () => '' });
   await expect(apiRequest('/test')).rejects.toThrow('empty response');
+  expect(window.alert).toHaveBeenLastCalledWith('The backend returned an empty response.');
   fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
   await expect(apiRequest('/test')).rejects.toThrow('Cannot reach the backend');
+  expect(window.alert).toHaveBeenLastCalledWith(
+    expect.stringContaining('Cannot reach the backend')
+  );
 });
 
 test('timeout ends the request without automatically retrying a mutation', async () => {
@@ -99,6 +147,8 @@ test('timeout ends the request without automatically retrying a mutation', async
   jest.advanceTimersByTime(35000);
   await pending;
   expect(fetch).toHaveBeenCalledTimes(1);
+  expect(window.alert).toHaveBeenCalledTimes(1);
+  expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('The request timed out'));
 });
 
 test('logout clears the application JWT', async () => {

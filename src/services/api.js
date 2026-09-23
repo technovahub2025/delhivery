@@ -81,13 +81,16 @@ export async function apiRequest(path, { method = 'GET', query, body, signal } =
     return result;
   } catch (error) {
     if (signal?.aborted) throw error;
+    let failure = error;
     if (error.name === 'AbortError')
-      throw new Error('The request timed out. Check its status before submitting again.');
-    if (error instanceof TypeError)
-      throw new Error(
+      failure = new Error('The request timed out. Check its status before submitting again.');
+    else if (error instanceof TypeError)
+      failure = new Error(
         'Cannot reach the backend. Check that it is running and the API URL is correct.'
       );
-    throw error;
+    // Every screen shares this service; alert once before its local error handling runs.
+    window.alert(failure.message || 'Request failed. Please try again.');
+    throw failure;
   } finally {
     signal?.removeEventListener('abort', abort);
     clearTimeout(timeout);

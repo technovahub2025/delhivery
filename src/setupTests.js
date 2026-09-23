@@ -3,3 +3,12 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+
+// jsdom does not implement native browser dialogs.
+beforeEach(() => {
+  jest.spyOn(window, 'alert').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  window.alert.mockRestore();
+});
