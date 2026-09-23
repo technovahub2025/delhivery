@@ -10,6 +10,7 @@ import ShippingCalculatorPage from '../pages/shipping/ShippingCalculatorPage';
 import ShipmentTrackingPage from '../pages/tracking/ShipmentTrackingPage';
 import WarehousesPage from '../pages/warehouses/WarehousesPage';
 import WaybillManagementPage from '../pages/waybills/WaybillManagementPage';
+import ShipmentLoadState from '../components/shipments/ShipmentLoadState';
 
 export default function WorkspacePages({
   page,
@@ -21,6 +22,9 @@ export default function WorkspacePages({
   searchKey,
 }) {
   const { shipments, setShipments, warehouses, setWarehouses, pickups, setPickups } = workspace;
+  if (page === 'shipments' && workspace.shipmentLoad.status !== 'success') {
+    return <ShipmentLoadState load={workspace.shipmentLoad} />;
+  }
   switch (page) {
     case 'shipments':
       return (
@@ -74,6 +78,6 @@ export default function WorkspacePages({
     case 'events':
       return <WebhookEventsPage />;
     default:
-      return <DashboardPage shipments={shipments} navigate={navigate} onDetails={onDetails} />;
+      return <DashboardPage shipments={shipments} load={workspace.shipmentLoad} navigate={navigate} onDetails={onDetails} />;
   }
 }

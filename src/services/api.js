@@ -40,11 +40,14 @@ export function assertProviderSuccess(value) {
   }
 }
 
-export async function apiRequest(path, { method = 'GET', query, body } = {}) {
+export async function apiRequest(path, { method = 'GET', query, body, signal } = {}) {
   const params = new URLSearchParams(
     Object.entries(query || {}).filter(([, v]) => v !== undefined && v !== '')
   );
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) controller.abort();
   const timeout = setTimeout(() => controller.abort(), 35000);
   try {
     const response = await fetch(`${API_BASE_URL}${path}${params.toString() ? `?${params}` : ''}`, {
@@ -71,6 +74,7 @@ export async function apiRequest(path, { method = 'GET', query, body } = {}) {
     assertProviderSuccess(result);
     return result;
   } catch (error) {
+    if (signal?.aborted) throw error;
     if (error.name === 'AbortError')
       throw new Error('The request timed out. Check its status before submitting again.');
     if (error instanceof TypeError)
@@ -79,6 +83,7 @@ export async function apiRequest(path, { method = 'GET', query, body } = {}) {
       );
     throw error;
   } finally {
+    signal?.removeEventListener('abort', abort);
     clearTimeout(timeout);
   }
 }
@@ -86,6 +91,7 @@ export async function apiRequest(path, { method = 'GET', query, body } = {}) {
 const post = (path, body) => apiRequest(path, { method: 'POST', body });
 const get = (path, query) => apiRequest(`/delhivery/${path}`, { query });
 export const api = {
+  shipments: (query, signal) => apiRequest('/delhivery/shipments', { query, signal }),
   login: (body) => post('/auth/login', body),
   register: (body) => post('/auth/register', body),
   pincode: (pincode, heavy) => get(heavy ? 'pincode/heavy' : 'pincode', { pincode }),

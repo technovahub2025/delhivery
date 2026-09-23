@@ -35,6 +35,26 @@ Deploy `index.html` and its matching assets together. Upload new assets before r
 
 Verify the script and stylesheet URLs in the deployed HTML return HTTP 200 with JavaScript and CSS content respectively. An HTML fallback response for a missing asset is not a successful deployment.
 
+### Main website appears instead of Delhivery
+
+If `/test_delhivery/` shows the TechnovaHub marketing website and the console says `No routes matched location "/test_delhivery/"`, the browser is running the main website's app. This frontend does not use React Router; adding a route to this project will not fix that warning.
+
+1. Upload the contents of `build/` to the hosting document root's `test_delhivery/` directory (for example, `public_html/test_delhivery/` on hosts using that document root).
+2. Open `/test_delhivery/index.html` directly. Its page source should contain the title `Delhivery-Every delivery, one workspace` and scripts under `/test_delhivery/assets/`. If it contains the marketing site's title or scripts, check the upload location and the host's rewrite/proxy rules.
+3. Configure the host to serve `/test_delhivery/` from that directory, using its own `index.html`, before applying the main website's SPA fallback. On Apache, inspect the document root's `.htaccess`; on Nginx, inspect the site's location and fallback rules. These hosting rules are outside this frontend repository. Preserve the main website's other routes.
+4. Clear any hosting/CDN HTML cache and reload. Confirm the directory URL and the direct `index.html` URL both load the Delhivery login page, and that its JavaScript and CSS requests return the correct files.
+
+For Apache 2.4 hosting with `.htaccess` overrides enabled, the build includes a `.htaccess` file that selects this app's `index.html` and handles its fallback. Include this hidden file when uploading.
+
+If the main site's document-root `.htaccess` rewrites all requests to its own app, insert this rule **immediately after `RewriteEngine On` and before its existing fallback rules** in that document-root file:
+
+```apache
+# Let the deployed Delhivery directory handle its own requests.
+RewriteRule ^test_delhivery(?:/|$) - [L]
+```
+
+This parent rule belongs in the hosting document root, not inside `test_delhivery/`. The directory-level file cannot prevent an earlier parent rewrite. These Apache rules do not apply to Nginx or reverse-proxy hosting.
+
 ## Connected features
 
 - Registration and login call the backend. The application JWT is kept in memory, sent as a Bearer token, and cleared on logout. Remember me retains the email during the current page session; it does not persist the password or JWT.

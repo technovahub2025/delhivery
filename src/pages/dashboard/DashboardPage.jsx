@@ -6,8 +6,9 @@ import RecentShipmentsTable from '../../components/dashboard/RecentShipmentsTabl
 import ShipmentActivityChart from '../../components/dashboard/ShipmentActivityChart';
 import ShipmentStats from '../../components/dashboard/ShipmentStats';
 import { Button } from '../../components/ui';
+import ShipmentLoadState from '../../components/shipments/ShipmentLoadState';
 
-export default function DashboardPage({ shipments, navigate, onDetails }) {
+export default function DashboardPage({ shipments, load, navigate, onDetails }) {
   const [period, setPeriod] = useState('This week');
   const stats = [
     ['Total shipments', shipments.length, Box, 'orange'],
@@ -29,7 +30,7 @@ export default function DashboardPage({ shipments, navigate, onDetails }) {
           <h1>
             Every delivery starts here<span className="text-orange">.</span>
           </h1>
-          <p>Welcome back. Here are the shipments added in this session.</p>
+          <p>Shipments from your connected Delhivery account.</p>
         </div>
         <Button onClick={() => navigate('create')}>
           <Plus size={17} />
@@ -49,13 +50,15 @@ export default function DashboardPage({ shipments, navigate, onDetails }) {
           Your shipping workspace
         </span>
       </div>
+      {load.status !== 'success' ? <ShipmentLoadState load={load} /> : <>
       <ShipmentStats stats={stats} navigate={navigate} />
       <div className="chart-grid">
         <ShipmentActivityChart shipments={shipments} period={period} setPeriod={setPeriod} />
         <DeliveryStatusChart shipments={shipments} stats={stats} />
       </div>
-      <QuickActions navigate={navigate} />
       <RecentShipmentsTable shipments={shipments} navigate={navigate} onDetails={onDetails} />
+      </>}
+      <QuickActions navigate={navigate} />
       <div className="page-foot">
         <span>
           <ShieldIcon /> Workspace overview <span className="foot-separator">·</span> Manage your

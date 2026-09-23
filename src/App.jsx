@@ -13,6 +13,7 @@ import { setAuthToken } from './services/api';
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [sessionToken, setSessionToken] = useState(null);
   const [rememberedEmail, setRememberedEmail] = useState('');
   const [authPage, setAuthPage] = useState('login');
   const [page, setPage] = useState('dashboard');
@@ -20,7 +21,7 @@ export default function App() {
   const [detailId, setDetailId] = useState(null);
   const [tableSearch, setTableSearch] = useState('');
   const [searchKey, setSearchKey] = useState(0);
-  const workspace = useDemoWorkspace();
+  const workspace = useDemoWorkspace(sessionToken);
   const { message, notify } = useToast();
   const details = workspace.shipments.find((shipment) => shipment.id === detailId);
 
@@ -33,6 +34,7 @@ export default function App() {
   function login(session, remember = false) {
     setRememberedEmail(remember ? session.user.email : '');
     setAuthToken(session.token);
+    setSessionToken(session.token);
     setUser(session.user);
     setPage('dashboard');
     notify('Welcome to your workspace.');
@@ -40,6 +42,7 @@ export default function App() {
 
   function logout() {
     setAuthToken(null);
+    setSessionToken(null);
     workspace.reset();
     setUser(null);
     setAuthPage('login');
