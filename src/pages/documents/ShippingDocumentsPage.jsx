@@ -2,8 +2,21 @@ import { useState } from 'react';
 import { Button, Empty, Field, Skeleton } from '../../components/ui';
 import PageHeading from '../../components/ui/PageHeading';
 import ApiResult from '../../components/ui/ApiResult';
-import { api, unwrap } from '../../services/api';
+import { api, assertProviderSuccess, unwrap } from '../../services/api';
 import useApiAction from '../../hooks/useApiAction';
+
+function documentErrorMessage(error) {
+  const details = error?.response?.data ?? error?.details;
+  const sources = [details?.data, details];
+  const nonEmptyString = (value) => typeof value === 'string' && value.trim();
+  const message =
+    sources.map((value) => value?.error).find(nonEmptyString) ||
+    sources.map((value) => value?.message).find(nonEmptyString) ||
+    'Unable to fetch the document. Please try again.';
+  return /\bEPOD\b/i.test(message) && /\bnot available\b/i.test(message)
+    ? 'Proof of delivery is not available for this shipment yet.'
+    : message;
+}
 
 export default function ShippingDocumentsPage({ shipments }) {
   const [waybill, setWaybill] = useState('');
@@ -23,15 +36,18 @@ export default function ShippingDocumentsPage({ shipments }) {
             event.preventDefault();
             if (!waybill.trim()) return;
             setResult(null);
-            run(async () =>
-              setResult(
-                unwrap(
-                  await (type === 'label'
-                    ? api.label(waybill.trim())
-                    : api.documents(waybill.trim()))
-                )
-              )
-            );
+            run(async () => {
+              try {
+                const response = await (type === 'label'
+                  ? api.label(waybill.trim())
+                  : api.documents(waybill.trim()));
+                assertProviderSuccess(response);
+                setResult(unwrap(response));
+              } catch (failure) {
+                setResult(null);
+                throw new Error(documentErrorMessage(failure));
+              }
+            });
           }}
         >
           <Field

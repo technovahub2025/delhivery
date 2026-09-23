@@ -31,7 +31,10 @@ export function assertProviderSuccess(value) {
     /^(error|fail|failed|failure)$/i.test(value.status || '') ||
     (value.errors && Object.keys(value.errors).length)
   ) {
-    throw new Error(message(value) || 'The shipping service could not complete this request.');
+    throw Object.assign(
+      new Error(message(value) || 'The shipping service could not complete this request.'),
+      { details: value }
+    );
   }
   if (Array.isArray(value)) value.forEach(assertProviderSuccess);
   else {
@@ -69,7 +72,10 @@ export async function apiRequest(path, { method = 'GET', query, body, signal } =
         `The backend returned an invalid response (${response.status}). Check the API URL.`
       );
     }
-    if (!response.ok) throw new Error(message(result) || `Request failed (${response.status}).`);
+    if (!response.ok)
+      throw Object.assign(new Error(message(result) || `Request failed (${response.status}).`), {
+        details: result,
+      });
     if (result === null) throw new Error('The backend returned an empty response.');
     assertProviderSuccess(result);
     return result;

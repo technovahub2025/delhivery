@@ -49,8 +49,14 @@ export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, noti
             label="Warehouse name"
             name="name"
             defaultValue={edit.name}
+            aria-describedby={edit.id ? 'warehouse-name-note' : undefined}
             required
           />
+          {edit.id && (
+            <p className="muted" id="warehouse-name-note">
+              Warehouse name cannot be edited after creation.
+            </p>
+          )}
           <div className="form-grid">
             <Field label="Contact name" name="contact" defaultValue={edit.contact} required />
             <Field
