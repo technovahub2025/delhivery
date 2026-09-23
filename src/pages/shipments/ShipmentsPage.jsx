@@ -4,10 +4,12 @@ import { useState } from 'react';
 import ShipmentActionDialog from '../../components/shipments/ShipmentActionDialog';
 import { Badge, Button, Empty } from '../../components/ui';
 import Pagination from '../../components/ui/Pagination';
+import ShipmentLoadState from '../../components/shipments/ShipmentLoadState';
 import { statuses } from '../../data/demo';
 
 export default function ShipmentsPage({
   shipments,
+  load,
   setShipments,
   navigate,
   notify,
@@ -36,14 +38,15 @@ export default function ShipmentsPage({
       <div className="page-heading">
         <div>
           <div className="eyebrow muted">SHIPMENT MANAGEMENT</div>
-          <h1>All your shipments. One place.</h1>
-          <p>Stay on top of every package, from pickup to doorstep.</p>
+          <h1>{load.status === 'success' ? 'All your shipments. One place.' : 'Shipments created in this session'}</h1>
+          <p>{load.status === 'success' ? 'Stay on top of every package, from pickup to doorstep.' : 'These records do not include your existing account history.'}</p>
         </div>
         <Button onClick={() => navigate('create')}>
           <Plus size={17} />
           Create shipment
         </Button>
       </div>
+      {load.status !== 'success' && <ShipmentLoadState load={load} />}
       <section className="card table-card">
         <div className="tabs">
           {['All shipments', ...statuses].map((t) => (

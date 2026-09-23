@@ -1,6 +1,19 @@
 import { CheckCheck } from 'lucide-react';
 
 export default function DeliveryStatusChart({ shipments, stats }) {
+  const categories = [
+    ['Delivered', stats[2][1], '#31a780'],
+    ['In transit', stats[1][1], '#6485c6'],
+    ['Pending pickup', stats[3][1], '#f4b555'],
+    ['Cancelled', stats[4][1], '#e99494'],
+    ['Other', shipments.length - stats.slice(1).reduce((sum, stat) => sum + stat[1], 0), '#9ca3af'],
+  ];
+  let offset = 0;
+  const segments = categories.map(([, count, color]) => {
+    const start = offset;
+    offset += shipments.length ? count / shipments.length * 100 : 0;
+    return `${color} ${start}% ${offset}%`;
+  });
   return (
     <section className="card">
       <div className="section-head">
@@ -17,7 +30,7 @@ export default function DeliveryStatusChart({ shipments, stats }) {
         style={{
           background: !shipments.length
             ? '#edf0f4'
-            : `conic-gradient(#31a780 0 ${(stats[2][1] / shipments.length) * 100}%, #6485c6 ${(stats[2][1] / shipments.length) * 100}% ${((stats[2][1] + stats[1][1]) / shipments.length) * 100}%, #f4b555 ${((stats[2][1] + stats[1][1]) / shipments.length) * 100}% ${((shipments.length - stats[4][1]) / shipments.length) * 100}%, #e99494 0)`,
+            : `conic-gradient(${segments.join(', ')})`,
         }}
       >
         <div>
@@ -26,10 +39,10 @@ export default function DeliveryStatusChart({ shipments, stats }) {
         </div>
       </div>
       <div className="status-legend">
-        {stats.slice(1).map(([title, value, , color]) => (
+        {categories.map(([title, value, color]) => (
           <div key={title}>
             <span>
-              <i className={`legend-dot ${color}`} />
+              <i className="legend-dot" style={{ backgroundColor: color }} />
               {title}
             </span>
             <strong>

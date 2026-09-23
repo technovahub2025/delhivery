@@ -74,7 +74,7 @@ export default function RecentShipmentsTable({ shipments, navigate, onDetails })
         </table>
       </div>
       {!shipments.length && (
-        <Empty title="No shipments yet" description="Create your first shipment to see it here." />
+        <Empty title="No shipments yet" description="The connected shipment source returned no records." />
       )}
     </section>
   );

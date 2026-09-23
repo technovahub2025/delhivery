@@ -22,7 +22,7 @@ export default function WorkspacePages({
   searchKey,
 }) {
   const { shipments, setShipments, warehouses, setWarehouses, pickups, setPickups } = workspace;
-  if (page === 'shipments' && workspace.shipmentLoad.status !== 'success') {
+  if (page === 'shipments' && !shipments.length && workspace.shipmentLoad.status !== 'success') {
     return <ShipmentLoadState load={workspace.shipmentLoad} />;
   }
   switch (page) {
@@ -31,6 +31,7 @@ export default function WorkspacePages({
         <ShipmentsPage
           key={searchKey}
           shipments={shipments}
+          load={workspace.shipmentLoad}
           setShipments={setShipments}
           navigate={navigate}
           notify={notify}
