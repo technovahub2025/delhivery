@@ -7,7 +7,7 @@ export default function AuthStory() {
         <span className="brand-icon">
           <Box size={25} />
         </span>
-        Delivery<span className="brand-hub">Hub</span>
+        Delhivery<span className="brand-hub">Hub</span>
       </a>
       <div className="story-main">
         <div className="eyebrow">
