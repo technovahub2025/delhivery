@@ -9,18 +9,26 @@ import { Button } from '../../components/ui';
 import useApiAction from '../../hooks/useApiAction';
 import { api } from '../../services/api';
 
-export default function LoginPage({ onLogin, onRegister, notify, initialEmail = '' }) {
+export default function LoginPage({ onLogin, onRegister, notify }) {
   const [visible, setVisible] = useState(false);
-  const [remember, setRemember] = useState(Boolean(initialEmail));
+  const [remember, setRemember] = useState(false);
   const [forgot, setForgot] = useState(false);
   const { busy, error, run } = useApiAction();
 
   function submit(event) {
     event.preventDefault();
-    const { email, password } = Object.fromEntries(new FormData(event.currentTarget));
+
+    const { email, password } = Object.fromEntries(
+      new FormData(event.currentTarget)
+    );
+
     run(async () => {
       const result = await api.login({ email, password });
-      if (!result.token || !result.user) throw new Error('The login response is incomplete.');
+
+      if (!result.token || !result.user) {
+        throw new Error('The login response is incomplete.');
+      }
+
       onLogin(result, remember);
     });
   }
@@ -34,20 +42,21 @@ export default function LoginPage({ onLogin, onRegister, notify, initialEmail = 
             icon={Mail}
             name="email"
             type="email"
-            defaultValue={initialEmail}
             placeholder="you@company.com"
             required
-            autoComplete="email"
+            autoComplete="off"
           />
+
           <PasswordField
             name="password"
             visible={visible}
             onToggle={() => setVisible(!visible)}
             placeholder="Enter your password"
             required
-            minLength={1}
-            autoComplete="current-password"
+            minLength={8}
+            autoComplete="new-password"
           />
+
           <div className="form-options">
             <label className="check-label">
               <input
@@ -57,22 +66,35 @@ export default function LoginPage({ onLogin, onRegister, notify, initialEmail = 
               />
               Remember me
             </label>
-            <button type="button" className="text-link" onClick={() => setForgot(true)}>
+
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => setForgot(true)}
+            >
               Forgot password?
             </button>
           </div>
+
           {error && (
             <p className="error" role="alert">
               {error}
             </p>
           )}
+
           <Button type="submit" className="auth-submit" disabled={busy}>
             {busy ? 'Just a moment…' : 'Log in'}
             <ArrowRight size={18} />
           </Button>
         </form>
       </AuthLayout>
-      {forgot && <ForgotPasswordDialog onClose={() => setForgot(false)} notify={notify} />}
+
+      {forgot && (
+        <ForgotPasswordDialog
+          onClose={() => setForgot(false)}
+          notify={notify}
+        />
+      )}
     </>
   );
 }
