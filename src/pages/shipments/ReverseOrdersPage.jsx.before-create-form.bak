@@ -1,0 +1,133 @@
+﻿import { useCallback, useEffect, useState } from 'react';
+import { RefreshCw, RotateCcw, Search } from 'lucide-react';
+
+import { api, unwrap } from '../../services/api';
+import { Badge, Button, Empty } from '../../components/ui';
+
+export default function ReverseOrdersPage({ notify }) {
+  const [orders, setOrders] = useState([]);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await api.reverseOrders();
+      const data = unwrap(result);
+      setOrders(Array.isArray(data?.reverseOrders) ? data.reverseOrders : []);
+    } catch (err) {
+      setError(err.message || 'Unable to load reverse orders.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  const filtered = orders.filter((order) =>
+    [
+      order.id,
+      order.waybill,
+      order.reference,
+      order.referenceNumber,
+      order.customer,
+      order.returnReason,
+      order.status,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query.toLowerCase())
+  );
+
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow muted">RETURNS MANAGEMENT</div>
+          <h1>Reverse Orders</h1>
+          <p>
+            Manage customer returns and reverse pickups created through this
+            DeliveryHub workspace.
+          </p>
+        </div>
+
+        <Button onClick={loadOrders} disabled={loading}>
+          <RefreshCw size={16} />
+          Refresh
+        </Button>
+      </div>
+
+      <section className="card table-card">
+        <div className="table-toolbar">
+          <div className="search-input">
+            <Search size={17} />
+            <input
+              aria-label="Search reverse orders"
+              placeholder="Search waybill, reference or customer..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+
+          <span>{filtered.length} reverse orders</span>
+        </div>
+
+        {loading ? (
+          <div className="empty-state">
+            <RotateCcw size={24} />
+            <p>Loading reverse orders...</p>
+          </div>
+        ) : error ? (
+          <div className="empty-state">
+            <p>{error}</p>
+            <Button onClick={loadOrders}>Try again</Button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <Empty
+            title={query ? 'No matching reverse orders' : 'No reverse orders yet'}
+            description={
+              query
+                ? 'Try another search term.'
+                : 'Reverse orders created through this workspace will appear here.'
+            }
+          />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Waybill</th>
+                  <th>Reference</th>
+                  <th>Customer</th>
+                  <th>Return reason</th>
+                  <th>Return warehouse</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((order, index) => (
+                  <tr key={order.id || order.waybill || index}>
+                    <td>{order.waybill || order.id || '—'}</td>
+                    <td>{order.referenceNumber || order.reference || '—'}</td>
+                    <td>{order.customer || '—'}</td>
+                    <td>{order.returnReason || '—'}</td>
+                    <td>{order.returnWarehouse || order.warehouse || '—'}</td>
+                    <td>
+                      <Badge>{order.status || 'Unknown'}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}

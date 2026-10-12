@@ -340,3 +340,273 @@
   color: #41a582;
   background: #edf8f2;
 }
+.action-required {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 23px;
+  box-shadow: 0 2px 4px #18263a02;
+}
+
+.action-required-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 17px;
+}
+
+.action-required-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.action-required-title h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #344258;
+}
+
+.action-required-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: #d39a32;
+  background: #fff7e7;
+}
+
+.action-required-nav {
+  display: flex;
+  gap: 5px;
+}
+
+.action-required-nav button {
+  width: 27px;
+  height: 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e7ebf0;
+  border-radius: 6px;
+  background: #fff;
+  color: #7c899b;
+  cursor: pointer;
+}
+
+.action-required-nav button:hover {
+  background: #f7f8fa;
+  color: #4f5d70;
+}
+
+.action-required-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-top: 1px solid #eef1f4;
+}
+
+.action-required-item {
+  min-width: 0;
+  padding: 15px 17px 4px;
+  border-right: 1px solid #eef1f4;
+}
+
+.action-required-item:first-child {
+  padding-left: 2px;
+}
+
+.action-required-item:last-child {
+  border-right: 0;
+  padding-right: 2px;
+}
+
+.action-required-label {
+  min-height: 30px;
+  color: #748197;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.action-required-count {
+  margin: 3px 0 7px;
+  color: #354258;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.action-required-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #e0783f;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-required-action:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .action-required-list {
+    grid-template-columns: repeat(5, minmax(125px, 1fr));
+    overflow-x: auto;
+  }
+}
+
+.bad-address-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(28, 39, 62, 0.62);
+}
+
+.bad-address-modal {
+  position: relative;
+  width: min(640px, 100%);
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 18px 50px rgba(20, 30, 50, 0.25);
+  overflow: hidden;
+}
+
+.bad-address-modal-header {
+  padding: 20px 32px 16px;
+  border-bottom: 1px solid #e8ebf0;
+}
+
+.bad-address-modal-header h2 {
+  margin: 0;
+  max-width: 540px;
+  color: #3f4963;
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.bad-address-modal-close {
+  position: absolute;
+  top: 34px;
+  right: 20px;
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  color: #a9b0c0;
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bad-address-modal-close:hover {
+  color: #69738a;
+}
+
+.bad-address-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 24px 40px;
+}
+
+.bad-address-action-card {
+  position: relative;
+  min-height: 122px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #fafafd;
+}
+
+.bad-address-card-title {
+  padding: 6px 9px;
+  background: #dfe3eb;
+  color: #59637b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.bad-address-card-title.ready-pickup {
+  background: #e52328;
+  color: #fff;
+}
+
+.bad-address-card-content {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 14px 13px 10px;
+}
+
+.bad-address-card-count {
+  color: #455069;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.bad-address-card-label {
+  color: #626b7e;
+  font-size: 10px;
+}
+
+.bad-address-action-card button {
+  margin-left: 13px;
+  padding: 7px 13px;
+  border: 1px solid #d7dce5;
+  border-radius: 3px;
+  background: #fff;
+  color: #313b50;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.bad-address-action-card button:hover:not(:disabled) {
+  border-color: #b9c0ce;
+  background: #f7f8fa;
+}
+
+.bad-address-action-card button:disabled {
+  color: #b8bfcc;
+  background: #f8f9fb;
+  cursor: not-allowed;
+}
+
+.bad-address-card-note {
+  position: absolute;
+  right: 7px;
+  bottom: -1px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: #fff1f1;
+  color: #ef5350;
+  font-size: 9px;
+}
+
+@media (max-width: 700px) {
+  .bad-address-modal-overlay {
+    padding: 12px;
+  }
+
+  .bad-address-modal-header {
+    padding: 18px 20px 14px;
+  }
+
+  .bad-address-modal-header h2 {
+    font-size: 21px;
+    padding-right: 25px;
+  }
+
+  .bad-address-action-grid {
+    grid-template-columns: 1fr;
+    padding: 18px 20px;
+  }
+}

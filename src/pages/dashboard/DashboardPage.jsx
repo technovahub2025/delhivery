@@ -1,5 +1,5 @@
-import { Box, CalendarDays, CheckCheck, Clock3, Plus, Truck, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, Box, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Clock3, Plus, Truck, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import DeliveryStatusChart from '../../components/dashboard/DeliveryStatusChart';
 import QuickActions from '../../components/dashboard/QuickActions';
 import RecentShipmentsTable from '../../components/dashboard/RecentShipmentsTable';
@@ -7,9 +7,28 @@ import ShipmentActivityChart from '../../components/dashboard/ShipmentActivityCh
 import ShipmentStats from '../../components/dashboard/ShipmentStats';
 import { Button } from '../../components/ui';
 import ShipmentLoadState from '../../components/shipments/ShipmentLoadState';
+import { api, unwrap } from '../../services/api';
 
 export default function DashboardPage({ shipments, load, navigate, onDetails }) {
   const [period, setPeriod] = useState('This week');
+  const [actionData, setActionData] = useState(null);
+  const [showBadAddressModal, setShowBadAddressModal] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    api.actionRequired()
+      .then((result) => {
+        if (active) setActionData(unwrap(result));
+      })
+      .catch(() => {
+        if (active) setActionData(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
   const stats = [
     ['Total shipments', shipments.length, Box, 'orange'],
     ['In transit', shipments.filter((s) => s.status === 'In transit').length, Truck, 'blue'],
@@ -21,6 +40,13 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
       'amber',
     ],
     ['Cancelled', shipments.filter((s) => s.status === 'Cancelled').length, XCircle, 'red'],
+  ];
+  const actionRequired = [
+    {
+      label: 'Bad Addresses',
+      count: actionData?.badAddresses ?? 0,
+      action: 'Act Now',
+    },
   ];
   return (
     <>
@@ -51,6 +77,122 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
           Your shipping workspace
         </span>
       </div>
+      <div className="action-required">
+        <div className="action-required-header">
+          <div className="action-required-title">
+            <span className="action-required-icon">
+              <AlertTriangle size={16} strokeWidth={2.2} />
+            </span>
+            <h2>Action Required</h2>
+          </div>
+
+          <div className="action-required-nav">
+            <button type="button" aria-label="Previous action">
+              <ChevronLeft size={15} />
+            </button>
+            <button type="button" aria-label="Next action">
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div className="action-required-list">
+          {actionRequired.map((item) => (
+            <div className="action-required-item" key={item.label}>
+              <div className="action-required-label">{item.label}</div>
+              <div className="action-required-count">{item.count}</div>
+              <button
+                type="button"
+                className="action-required-action"
+                onClick={() => {
+                  if (item.label === 'Bad Addresses') {
+                    setShowBadAddressModal(true);
+                  }
+                }}
+              >
+                {item.action}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      {showBadAddressModal && (
+        <div
+          className="bad-address-modal-overlay"
+          onClick={() => setShowBadAddressModal(false)}
+        >
+          <div
+            className="bad-address-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bad-address-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="bad-address-modal-close"
+              aria-label="Close"
+              onClick={() => setShowBadAddressModal(false)}
+            >
+              Ã—
+            </button>
+
+            <div className="bad-address-modal-header">
+              <h2 id="bad-address-modal-title">
+                Take actions on your orders with Bad Addresses
+              </h2>
+            </div>
+
+            <div className="bad-address-action-grid">
+              <div className="bad-address-action-card">
+                <div className="bad-address-card-title">PENDING</div>
+                <div className="bad-address-card-content">
+                  <div className="bad-address-card-count">0</div>
+                  <div className="bad-address-card-label">Bad Addresses</div>
+                </div>
+                <button type="button" disabled>
+                  Act Now
+                </button>
+              </div>
+
+              <div className="bad-address-action-card">
+                <div className="bad-address-card-title">READY TO SHIP</div>
+                <div className="bad-address-card-content">
+                  <div className="bad-address-card-count">
+                    {actionData?.badAddresses ?? 0}
+                  </div>
+                  <div className="bad-address-card-label">Bad Addresses</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBadAddressModal(false);
+                    navigate('shipments');
+                  }}
+                >
+                  Act Now
+                </button>
+              </div>
+
+              <div className="bad-address-action-card">
+                <div className="bad-address-card-title ready-pickup">
+                  READY FOR PICKUP
+                </div>
+                <div className="bad-address-card-content">
+                  <div className="bad-address-card-count">0</div>
+                  <div className="bad-address-card-label">Bad Addresses</div>
+                </div>
+                <button type="button" disabled>
+                  Act Now
+                </button>
+                <div className="bad-address-card-note">
+                  Verify before pickup
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {load.status !== 'success' ? (
         <ShipmentLoadState load={load} />
       ) : (
@@ -66,7 +208,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
       <QuickActions navigate={navigate} />
       <div className="page-foot">
         <span>
-          <ShieldIcon /> Workspace overview <span className="foot-separator">·</span> Manage your
+          <ShieldIcon /> Workspace overview <span className="foot-separator">Ã‚Â·</span> Manage your
           shipments in one place.
         </span>
         <span>
@@ -84,3 +226,11 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
 function ShieldIcon() {
   return <span className="pulse-dot" />;
 }
+
+
+
+
+
+
+
+

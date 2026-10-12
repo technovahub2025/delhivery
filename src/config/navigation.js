@@ -1,7 +1,8 @@
-import {
+﻿import {
   Box,
   Building2,
   Calculator,
+  RotateCcw,
   Clock3,
   Code2,
   FileText,
@@ -18,6 +19,8 @@ export const navGroups = [
     [
       ['dashboard', 'Overview', LayoutDashboard],
       ['shipments', 'Shipments', Package],
+      ['ndr', 'NDR Management', RotateCcw],
+      ['reverseOrders', 'Reverse Orders', Package],
       ['create', 'Create shipment', Plus],
       ['tracking', 'Track shipment', MapPin],
       ['pickups', 'Pickup requests', Truck],
@@ -41,3 +44,5 @@ export const navGroups = [
     ],
   ],
 ];
+
+

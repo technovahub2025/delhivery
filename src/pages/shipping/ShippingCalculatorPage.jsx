@@ -1,5 +1,5 @@
-import ShippingToolPanel from '../../components/shipping/ShippingToolPanel';
+﻿import ShippingCostCalculator from '../../components/shipping/ShippingCostCalculator';
 
-export default function ShippingCalculatorPage() {
-  return <ShippingToolPanel type="calculator" />;
+export default function ShippingCalculatorPage({ navigate }) {
+  return <ShippingCostCalculator navigate={navigate} />;
 }

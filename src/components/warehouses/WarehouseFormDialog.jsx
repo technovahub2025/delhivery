@@ -1,8 +1,8 @@
-import { api } from '../../services/api';
+﻿import { api } from '../../services/api';
 import useApiAction from '../../hooks/useApiAction';
 import { Button, Field, Modal } from '../ui';
 
-export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, notify }) {
+export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, notify, onSaved }) {
   const { busy, error, run } = useApiAction();
   return (
     <Modal title={edit.id ? 'Edit warehouse' : 'Add warehouse'} onClose={() => setEdit(null)}>
@@ -104,3 +104,4 @@ export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, noti
     </Modal>
   );
 }
+

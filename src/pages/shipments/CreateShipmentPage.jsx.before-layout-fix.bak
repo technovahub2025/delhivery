@@ -1,0 +1,543 @@
+﻿import { ArrowLeft, ArrowRight, Package } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+import ShipmentCreatedConfirmation from '../../components/shipments/ShipmentCreatedConfirmation';
+import ShipmentSteps from '../../components/shipments/ShipmentSteps';
+import PackageDetailsStep from '../../components/shipments/steps/PackageDetailsStep';
+import PaymentStep from '../../components/shipments/steps/PaymentStep';
+import PickupWarehouseStep from '../../components/shipments/steps/PickupWarehouseStep';
+import RecipientDetailsStep from '../../components/shipments/steps/RecipientDetailsStep';
+import ShipmentReviewStep from '../../components/shipments/steps/ShipmentReviewStep';
+import useApiAction from '../../hooks/useApiAction';
+
+import { Button } from '../../components/ui';
+import { api, unwrap } from '../../services/api';
+
+function OrderSummary({ data, setData, warehouses }) {
+  const [prices, setPrices] = useState({
+    Surface: null,
+    Express: null,
+  });
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [priceError, setPriceError] = useState('');
+
+  const selectedWarehouse = warehouses.find(
+    (warehouse) => warehouse.name === data.warehouse
+  );
+
+  const originPincode = String(selectedWarehouse?.pincode || '').trim();
+  const destinationPincode = String(data.pincode || '').trim();
+
+  const chargeableWeightKg = Number(data.chargeableWeightKg);
+  const chargeableWeightGrams = Math.round(chargeableWeightKg * 1000);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchPrices() {
+      if (
+        !/^\d{6}$/.test(originPincode) ||
+        !/^\d{6}$/.test(destinationPincode) ||
+        !Number.isFinite(chargeableWeightKg) ||
+        chargeableWeightKg <= 0
+      ) {
+        setPrices({
+          Surface: null,
+          Express: null,
+        });
+        setPriceError('');
+        return;
+      }
+
+      setPriceLoading(true);
+      setPriceError('');
+
+      try {
+        const paymentType =
+          data.payment === 'COD' ? 'COD' : 'Pre-paid';
+
+        const baseQuery = {
+          ss: 'Delivered',
+          d_pin: destinationPincode,
+          o_pin: originPincode,
+          cgm: chargeableWeightGrams,
+          pt: paymentType,
+        };
+
+        const [surfaceResult, expressResult] = await Promise.all([
+          api.cost({
+            ...baseQuery,
+            md: 'S',
+          }),
+          api.cost({
+            ...baseQuery,
+            md: 'E',
+          }),
+        ]);
+
+        const surfaceData = unwrap(surfaceResult);
+        const expressData = unwrap(expressResult);
+
+        const surfacePrice = Number(Array.isArray(surfaceData) ? surfaceData[0]?.total_amount : surfaceData?.total_amount);
+      const expressPrice = Number(Array.isArray(expressData) ? expressData[0]?.total_amount : expressData?.total_amount);
+
+        if (
+          !Number.isFinite(surfacePrice) ||
+          !Number.isFinite(expressPrice)
+        ) {
+          throw new Error(
+            'Delhivery did not return a valid shipping price.'
+          );
+        }
+
+        if (!cancelled) {
+          setPrices({
+            Surface: surfacePrice,
+            Express: expressPrice,
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPrices({
+            Surface: null,
+            Express: null,
+          });
+          setPriceError(
+            error?.message ||
+              'Unable to fetch shipping prices from Delhivery.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setPriceLoading(false);
+        }
+      }
+    }
+
+    fetchPrices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    originPincode,
+    destinationPincode,
+    chargeableWeightKg,
+    chargeableWeightGrams,
+    data.payment,
+  ]);
+  const boxCount = data.boxes?.length
+    ? data.boxes.reduce(
+        (total, box) => total + Math.max(1, Number(box.boxes) || 1),
+        0
+      )
+    : Number(data.quantity) || 1;
+
+  const chargeableWeight =
+    Number(data.chargeableWeightKg) > 0
+      ? `${Number(data.chargeableWeightKg).toFixed(2)} kg`
+      : '-';
+
+  const destination =
+    data.destination || data.pincode || data.address || '-';
+
+  return (
+    <aside className="order-summary-card">
+      <div className="order-summary-header">
+        <Package size={18} />
+        <h3>Order Summary</h3>
+      </div>
+
+      <div className="order-summary-divider" />
+
+      <div className="order-summary-row">
+        <span>Pickup from:</span>
+        <strong>{data.warehouse || '-'}</strong>
+      </div>
+
+      <div className="order-summary-row">
+        <span>Deliver to:</span>
+        <strong>{destination}</strong>
+      </div>
+
+      <div className="order-summary-row">
+        <span>Box / item count:</span>
+        <strong>{boxCount}</strong>
+      </div>
+
+      <div className="order-summary-row">
+        <span>Payment type:</span>
+        <strong>{data.payment || 'Prepaid'}</strong>
+      </div>
+
+      <div className="order-summary-row">
+        <span className="summary-weight-label">
+          Chargeable Weight
+          <span className="summary-info">i</span>
+        </span>
+        <strong>{chargeableWeight}</strong>
+      </div>
+
+      <div className="order-summary-divider" />
+
+      <div className="shipping-method-title">
+        Shipping method
+      </div>
+
+      <div className="shipping-method-grid">
+        <button
+          type="button"
+          className={`shipping-method ${
+            data.mode === 'Surface' ? 'selected' : ''
+          }`}
+          onClick={() =>
+            setData((draft) => ({
+              ...draft,
+              mode: 'Surface',
+            }))
+          }
+        >
+          <div className="shipping-method-main">
+            <span className="shipping-method-icon">&#128666;</span>
+            <span>Surface</span>
+          </div>
+
+          <strong className="shipping-method-price">
+            {priceLoading
+              ? 'Loading...'
+              : prices.Surface !== null
+                ? `\u20B9${prices.Surface.toFixed(2)}`
+                : '-'}
+          </strong>
+
+          <span
+            className={`shipping-radio ${
+              data.mode === 'Surface' ? 'checked' : ''
+            }`}
+          />
+        </button>
+
+        <button
+          type="button"
+          className={`shipping-method ${
+            data.mode === 'Express' ? 'selected' : ''
+          }`}
+          onClick={() =>
+            setData((draft) => ({
+              ...draft,
+              mode: 'Express',
+            }))
+          }
+        >
+          <div className="shipping-method-main">
+            <span className="shipping-method-icon">&#9992;</span>
+            <span>Express</span>
+          </div>
+
+          <strong className="shipping-method-price">
+            {priceLoading
+              ? 'Loading...'
+              : prices.Express !== null
+                ? `\u20B9${prices.Express.toFixed(2)}`
+                : '-'}
+          </strong>
+
+          <span
+            className={`shipping-radio ${
+              data.mode === 'Express' ? 'checked' : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      {priceError && (
+        <p className="shipping-price-error" role="alert">
+          {priceError}
+        </p>
+      )}
+
+      {!priceLoading &&
+        !priceError &&
+        prices.Surface === null &&
+        prices.Express === null && (
+          <p className="shipping-price-hint">
+            Enter the delivery pincode and package weight to fetch
+            current Delhivery prices.
+          </p>
+        )}
+    </aside>
+  );
+}
+
+export default function CreateShipmentPage({ warehouses, setWarehouses, notify, onCreate, navigate, prefill = null }) {
+  const { busy, error, run } = useApiAction();
+  const [step, setStep] = useState(0);
+
+  const [data, setData] = useState({
+    warehouse: warehouses[0]?.name || '',
+    reference: '',
+    state: '',
+    description: '',
+    quantity: '1',
+    customer: '',
+    email: '',
+    phone: '',
+    address: '',
+    pincode: prefill?.pincode || '',
+    destination: '',
+    weight: prefill?.weight || '',
+    boxes: [{
+      packagingType: 'Cardboard',
+      boxes: 1,
+      boxPreset: 'custom',
+      length: '',
+      width: '',
+      height: '',
+      unit: 'cm',
+      weight: prefill?.weight
+        ? String(Math.round(Number(prefill.weight) * 1000))
+        : '',
+      weightUnit: 'gm',
+    }],
+    actualWeightKg: Number(prefill?.weight) || 0,
+    volumetricWeightKg: 0,
+    chargeableWeightKg: Number(prefill?.weight) || 0,
+    length: '',
+    width: '',
+    height: '',
+    value: '',
+    payment: prefill?.payment || 'Prepaid',
+    mode: prefill?.mode || 'Express',
+    pincodeServiceable: false,
+  });
+
+  const [created, setCreated] = useState(null);
+  const [openSections, setOpenSections] = useState({
+    pickup: true,
+    order: true,
+    package: true,
+  });
+
+  function toggleSection(section) {
+    setOpenSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  }
+
+  const names = [
+    'Pickup warehouse',
+    'Recipient details',
+    'Package details',
+    'Payment',
+    'Review',
+  ];
+
+  function submit(e) {
+    e.preventDefault();
+
+    if (!data.warehouse) return;
+
+    if (!data.pincodeServiceable) {
+      notify?.('Please verify that the recipient pincode is serviceable.');
+      return;
+    }
+
+    run(async () => {
+      const shipment = await onCreate({
+        ...data,
+        dimensions: `${data.length} × ${data.width} × ${data.height} cm`,
+      });
+      setCreated(shipment);
+    });
+  }
+
+  if (created) {
+    return (
+      <ShipmentCreatedConfirmation
+        created={created}
+        navigate={navigate}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow muted">LET'S GET IT THERE</div>
+          <h1>Create a shipment</h1>
+          <p>A few simple details. A world of possibilities.</p>
+        </div>
+
+        <Button
+          variant="secondary"
+          onClick={() => navigate('shipments')}
+        >
+          Back to shipments
+        </Button>
+      </div>
+
+      <div className="wizard-layout">
+        <ShipmentSteps names={names} step={step} />
+
+        <section className="card wizard-card">
+          <div className="section-head">
+            <div>
+              <h2>{names[step]}</h2>
+
+              <p>
+                {
+                  [
+                    'Choose where your shipment begins.',
+                    'Tell us where this package is headed.',
+                    'A perfect fit starts with the right dimensions.',
+                    'Set the payment and delivery preferences.',
+                    'One final look before it heads out.',
+                  ][step]
+                }
+              </p>
+
+              <span className="step-label">
+                {step + 1} of 5
+              </span>
+            </div>
+          </div>
+
+          {!warehouses.length && (
+            <div className="info-box">
+              Enter an existing registered warehouse name below, or add a new warehouse.
+
+              <Button
+                type="button"
+                onClick={() => navigate('warehouses')}
+              >
+                Add warehouse
+              </Button>
+            </div>
+          )}
+
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <form onSubmit={submit}>
+  <fieldset
+    disabled={busy}
+    style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+  >
+    {!warehouses.length && (
+      <div className="info-box">
+        Enter an existing registered warehouse name below, or add a new warehouse.
+        <Button type="button" onClick={() => navigate('warehouses')}>
+          Add warehouse
+        </Button>
+      </div>
+    )}
+
+    {error && <p className="error" role="alert">{error}</p>}
+
+    <section className="create-order-section">
+      <button
+        type="button"
+        className="create-order-section-header"
+        aria-expanded={openSections.pickup}
+        onClick={() => toggleSection('pickup')}
+      >
+        <span>
+          <strong>Pickup &amp; delivery details</strong>
+          <small>Warehouse and recipient information</small>
+        </span>
+        <span>{openSections.pickup ? '−' : '+'}</span>
+      </button>
+      {openSections.pickup && (
+        <div className="create-order-section-body">
+          <PickupWarehouseStep
+            warehouses={warehouses}
+            data={data}
+            setData={setData}
+            setWarehouses={setWarehouses}
+            notify={notify}
+          />
+          <RecipientDetailsStep data={data} setData={setData} />
+        </div>
+      )}
+    </section>
+
+    <section className="create-order-section">
+      <button
+        type="button"
+        className="create-order-section-header"
+        aria-expanded={openSections.order}
+        onClick={() => toggleSection('order')}
+      >
+        <span>
+          <strong>Order details</strong>
+          <small>Payment preferences and shipment review</small>
+        </span>
+        <span>{openSections.order ? '−' : '+'}</span>
+      </button>
+      {openSections.order && (
+        <div className="create-order-section-body">
+          <PaymentStep data={data} setData={setData} />
+          <ShipmentReviewStep data={data} />
+        </div>
+      )}
+    </section>
+
+    <section className="create-order-section">
+      <button
+        type="button"
+        className="create-order-section-header"
+        aria-expanded={openSections.package}
+        onClick={() => toggleSection('package')}
+      >
+        <span>
+          <strong>Product &amp; box details</strong>
+          <small>Product description, dimensions and packed weight</small>
+        </span>
+        <span>{openSections.package ? '−' : '+'}</span>
+      </button>
+      {openSections.package && (
+        <div className="create-order-section-body">
+          <PackageDetailsStep data={data} setData={setData} />
+        </div>
+      )}
+    </section>
+
+    <div className="wizard-footer">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => navigate('shipments')}
+      >
+        Back to shipments
+      </Button>
+      <Button type="submit" disabled={!data.warehouse || busy}>
+        {busy ? 'Creating shipment...' : 'Create shipment'}
+        <ArrowRight size={16} />
+      </Button>
+    </div>
+  </fieldset>
+</form>
+        </section>
+
+        <OrderSummary
+          data={data}
+          setData={setData}
+          warehouses={warehouses}
+        />
+      </div>
+    </>
+  );
+}
+
+
+
+
+
+
+
+

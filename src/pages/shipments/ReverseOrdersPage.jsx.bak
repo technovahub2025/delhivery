@@ -1,0 +1,543 @@
+import { useCallback, useEffect, useState } from 'react';
+import { ArrowLeft, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { api, unwrap } from '../../services/api';
+import './ReverseOrdersPage.css';
+
+const blankItem = () => ({ name: '', sku: '', quantity: '1' });
+
+const blankForm = () => ({
+  reverseOrderId: '',
+  referenceNumber: '',
+  returnReason: 'Customer return',
+  notes: '',
+  customerName: '',
+  phone: '',
+  email: '',
+  address: '',
+  pincode: '',
+  city: '',
+  state: '',
+  returnWarehouse: '',
+  clientName: '',
+  returnName: '',
+  returnAddress: '',
+  returnCity: '',
+  returnState: '',
+  returnPincode: '',
+  returnPhone: '',
+  items: [blankItem()],
+  length: '10',
+  width: '10',
+  height: '10',
+  weightKg: '0.5',
+  orderValue: '0',
+  shippingMode: 'Surface',
+  fragile: false,
+});
+
+export default function ReverseOrdersPage({ notify }) {
+  const [orders, setOrders] = useState([]);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(blankForm);
+  const [lookupWaybill, setLookupWaybill] = useState('');
+  const [fetchingOriginal, setFetchingOriginal] = useState(false);
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = unwrap(await api.reverseOrders());
+      setOrders(Array.isArray(result?.reverseOrders) ? result.reverseOrders : []);
+    } catch (err) {
+      setError(err.message || 'Unable to load reverse orders.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  function update(field, value) {
+    setForm(current => ({ ...current, [field]: value }));
+  }
+
+    async function fetchOriginalShipment() {
+    const waybill = lookupWaybill.trim();
+    if (!waybill) return window.alert("Enter the original shipment waybill.");
+    setFetchingOriginal(true);
+    try {
+      const result = unwrap(await api.lookupOriginalShipment(waybill));
+      const shipment = result?.shipment;
+      if (!shipment) throw new Error("No saved shipment details were returned.");
+      const dimensions = String(shipment.dimensions || "").match(/\d+(?:\.\d+)?/g) || [];
+      setForm(current => ({
+        ...current,
+        referenceNumber: shipment.reference || current.referenceNumber,
+        customerName: shipment.customer || current.customerName,
+        phone: shipment.phone || current.phone,
+        email: shipment.email || current.email,
+        address: shipment.address || current.address,
+        pincode: String(shipment.pincode || current.pincode),
+        city: shipment.destination || shipment.city || current.city,
+        state: shipment.state || current.state,
+        returnWarehouse: shipment.warehouse || current.returnWarehouse,
+        weightKg: shipment.weight != null ? String(shipment.weight) : current.weightKg,
+        orderValue: shipment.value != null ? String(shipment.value) : current.orderValue,
+        length: dimensions[0] || current.length,
+        width: dimensions[1] || current.width,
+        height: dimensions[2] || current.height,
+      }));
+      window.alert("Saved shipment details fetched. Verify all details and complete missing fields.");
+    } catch (error) {
+      console.error("Original shipment lookup error:", error, error.details);
+      window.alert("Original shipment lookup failed. Open F12 > Console and check the Original shipment lookup error message.");
+    } finally {
+      setFetchingOriginal(false);
+    }
+  }
+
+  function updateItem(index, field, value) {
+    setForm(current => ({
+      ...current,
+      items: current.items.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  }
+
+  function addItem() {
+    setForm(current => ({ ...current, items: [...current.items, blankItem()] }));
+  }
+
+  function removeItem(index) {
+    setForm(current => ({
+      ...current,
+      items: current.items.filter((_, i) => i !== index),
+    }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    if (saving) return;
+
+    const weight = Number(form.weightKg);
+    const length = Number(form.length);
+    const width = Number(form.width);
+    const height = Number(form.height);
+    const value = Number(form.orderValue);
+
+    if (!form.reverseOrderId.trim()) return window.alert('Enter an Order ID.');
+    if (!form.referenceNumber.trim()) return window.alert('Enter a reference number.');
+    if (!form.returnReason.trim()) return window.alert('Select a return reason.');
+    if (!form.customerName.trim() || !form.address.trim()) {
+      return window.alert('Enter the customer name and address.');
+    }
+    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, ''))) {
+      return window.alert('Enter a valid 10-digit phone number.');
+    }
+    if (!/^[1-9]\d{5}$/.test(form.pincode.trim())) {
+      return window.alert('Enter a valid 6-digit pincode.');
+    }
+    if (!form.city.trim() || !form.state.trim() || !form.returnWarehouse.trim()) {
+      return window.alert('Complete customer pickup city, state and registered pickup warehouse.');
+    }
+    if (!form.clientName.trim()) {
+      return window.alert('Enter the exact registered Delhivery client name.');
+    }
+    if (
+      !form.returnName.trim() || !form.returnAddress.trim() ||
+      !form.returnCity.trim() || !form.returnState.trim() ||
+      !/^[1-9]\d{5}$/.test(form.returnPincode.trim()) ||
+      !/^\d{10}$/.test(form.returnPhone.replace(/\D/g, ''))
+    ) {
+      return window.alert('Complete the seller return name, address, city, state, valid pincode and 10-digit phone.');
+    }
+    if (!form.items.length || form.items.some(item =>
+      !item.name.trim() ||
+      !Number.isInteger(Number(item.quantity)) ||
+      Number(item.quantity) < 1
+    )) {
+      return window.alert('Add at least one item with a positive whole-number quantity.');
+    }
+    if (![weight, length, width, height, value].every(Number.isFinite) ||
+        weight <= 0 || length <= 0 || width <= 0 || height <= 0 || value < 0) {
+      return window.alert('Enter valid package weight, dimensions and order value.');
+    }
+    if (length + width + height < 15) {
+      return window.alert('Length + width + height must be at least 15 cm.');
+    }
+
+    const payload = {
+      ...form,
+      phone: form.phone.replace(/\D/g, ''),
+      items: form.items.map(item => ({
+        name: item.name.trim(),
+        sku: item.sku.trim(),
+        quantity: Number(item.quantity),
+      })),
+      length,
+      width,
+      height,
+      weightKg: weight,
+      orderValue: value,
+    };
+
+    const confirmed = window.confirm(
+      'Submit this reverse order to Delhivery? This can create a real carrier order and AWB.'
+    );
+    if (!confirmed) return;
+
+    setSaving(true);
+    try {
+      const result = unwrap(await api.createReverseOrder(payload));
+      const created = result?.reverseOrder;
+      if (!result?.success || !created?.waybill) {
+        throw new Error('The response did not confirm a reverse-order waybill. Check Delhivery before retrying.');
+      }
+      setOrders(current => [
+        created,
+        ...current.filter(order => order.waybill !== created.waybill),
+      ]);
+      setCreating(false);
+      setForm(blankForm());
+      notify?.(`Reverse order created. Waybill: ${created.waybill}`);
+    } catch (err) {
+      window.alert(
+        `${err.message || 'Reverse order creation could not be confirmed.'}\n\nCheck Delhivery before retrying. Do not submit the same order again until its status is confirmed.`
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const filtered = orders.filter(order =>
+    [
+      order.waybill, order.id, order.reference, order.referenceNumber,
+      order.reverseOrderId, order.customer, order.returnReason, order.status,
+    ].filter(Boolean).join(' ').toLowerCase().includes(query.toLowerCase())
+  );
+
+  if (creating) {
+    return (
+      <div className="reverse-page">
+        <div className="reverse-form-heading">
+          <button type="button" className="reverse-back" onClick={() => setCreating(false)}>
+            <ArrowLeft size={18} />
+          </button>
+          <h1>Create Reverse Order</h1>
+          <span className="reverse-learn">Return pickup</span>
+        </div>
+
+        <form className="reverse-form" onSubmit={submit}>
+          <div className="reverse-form-main">
+            <section className="reverse-card">
+              <h2>Order Details</h2>
+              <div className="reverse-lookup">
+                <label>
+                  Original shipment waybill
+                  <input
+                    value={lookupWaybill}
+                    onChange={(event) => setLookupWaybill(event.target.value)}
+                    placeholder="Enter existing forward shipment AWB"
+                    maxLength={80}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="reverse-secondary"
+                  onClick={fetchOriginalShipment}
+                  disabled={fetchingOriginal || !lookupWaybill.trim()}
+                >
+                  {fetchingOriginal ? "Fetching..." : "Fetch Original Shipment"}
+                </button>
+                <p className="reverse-hint">
+                  Reads saved MongoDB data only. It does not create a shipment.
+                </p>
+              </div>
+
+              <label>Order ID *
+                <input required maxLength={80} value={form.reverseOrderId}
+                  onChange={e => update('reverseOrderId', e.target.value)}
+                  placeholder="Enter Order ID / Reference Number" />
+              </label>
+              <label>Reference Number *
+                <input required value={form.referenceNumber}
+                  onChange={e => update('referenceNumber', e.target.value)}
+                  placeholder="Original order reference / AWB" />
+              </label>
+              <label>Return Reason *
+                <select required value={form.returnReason}
+                  onChange={e => update('returnReason', e.target.value)}>
+                  <option>Customer return</option>
+                  <option>Damaged product</option>
+                  <option>Wrong product delivered</option>
+                  <option>Product defective</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>Notes
+                <textarea rows="3" value={form.notes}
+                  onChange={e => update('notes', e.target.value)}
+                  placeholder="Additional return instructions" />
+              </label>
+            </section>
+
+            <section className="reverse-card">
+              <h2>Item Details</h2>
+              <p className="reverse-hint">
+                Enter the product and SKU manually. Product-catalogue search requires a separate catalogue API.
+              </p>
+              {form.items.map((item, index) => (
+                <div className="reverse-item" key={index}>
+                  <label>Product name *
+                    <input required value={item.name}
+                      onChange={e => updateItem(index, 'name', e.target.value)}
+                      placeholder="Product name" />
+                  </label>
+                  <label>SKU
+                    <input value={item.sku}
+                      onChange={e => updateItem(index, 'sku', e.target.value)}
+                      placeholder="SKU (optional)" />
+                  </label>
+                  <label>Quantity *
+                    <input required type="number" min="1" step="1" value={item.quantity}
+                      onChange={e => updateItem(index, 'quantity', e.target.value)} />
+                  </label>
+                  {form.items.length > 1 && (
+                    <button className="reverse-remove" type="button"
+                      onClick={() => removeItem(index)} aria-label="Remove item">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button className="reverse-secondary" type="button" onClick={addItem}>
+                <Plus size={15} /> Add item
+              </button>
+              <label className="reverse-check">
+                <input type="checkbox" checked={form.fragile}
+                  onChange={e => update('fragile', e.target.checked)} />
+                My package contains fragile items
+              </label>
+            </section>
+
+            <section className="reverse-card">
+              <h2>Other Details</h2>
+              <label>Return reason notes
+                <textarea rows="2" value={form.notes}
+                  onChange={e => update('notes', e.target.value)}
+                  placeholder="Optional instructions for the pickup" />
+              </label>
+              <label>Shipping mode *
+                <select value={form.shippingMode}
+                  onChange={e => update('shippingMode', e.target.value)}>
+                  <option value="Surface">Surface</option>
+                  <option value="Express">Express</option>
+                </select>
+              </label>
+            </section>
+          </div>
+
+          <div className="reverse-form-side">
+            <section className="reverse-card">
+              <h2>Return Details</h2>
+              <label>Customer name *
+                <input required value={form.customerName}
+                  onChange={e => update('customerName', e.target.value)} />
+              </label>
+              <label>Phone number *
+                <input required inputMode="numeric" maxLength={10}
+                  value={form.phone} onChange={e => update('phone', e.target.value)}
+                  placeholder="10-digit mobile number" />
+              </label>
+              <label>Email
+                <input type="email" value={form.email}
+                  onChange={e => update('email', e.target.value)} />
+              </label>
+              <label>Customer pickup address *
+                <textarea required rows="3" value={form.address}
+                  onChange={e => update('address', e.target.value)} />
+              </label>
+              <div className="reverse-grid-two">
+                <label>Pincode *
+                  <input required maxLength={6} inputMode="numeric" value={form.pincode}
+                    onChange={e => update('pincode', e.target.value)} />
+                </label>
+                <label>City *
+                  <input required value={form.city}
+                    onChange={e => update('city', e.target.value)} />
+                </label>
+              </div>
+              <label>State *
+                <input required value={form.state}
+                  onChange={e => update('state', e.target.value)} />
+              </label>
+              <label>Registered pickup warehouse *
+                <input required value={form.returnWarehouse}
+                  onChange={e => update('returnWarehouse', e.target.value)}
+                  placeholder="Exact registered Delhivery warehouse name" />
+              </label>
+              <p className="reverse-hint">
+                Use the exact warehouse name registered with Delhivery.
+              </p>
+            </section>
+
+            <section className="reverse-card">
+              <h2>Registered Client & Seller Return Address</h2>
+              <label>Registered Delhivery client name *
+                <input required value={form.clientName}
+                  onChange={e => update('clientName', e.target.value)}
+                  placeholder="Exact client name registered with Delhivery" />
+              </label>
+              <label>Return name *
+                <input required value={form.returnName}
+                  onChange={e => update('returnName', e.target.value)}
+                  placeholder="Seller or return facility name" />
+              </label>
+              <label>Seller return address *
+                <textarea required rows="3" value={form.returnAddress}
+                  onChange={e => update('returnAddress', e.target.value)}
+                  placeholder="Address where returned goods should go" />
+              </label>
+              <div className="reverse-grid-two">
+                <label>Return city *
+                  <input required value={form.returnCity}
+                    onChange={e => update('returnCity', e.target.value)} />
+                </label>
+                <label>Return state *
+                  <input required value={form.returnState}
+                    onChange={e => update('returnState', e.target.value)} />
+                </label>
+              </div>
+              <div className="reverse-grid-two">
+                <label>Return pincode *
+                  <input required maxLength={6} inputMode="numeric"
+                    value={form.returnPincode}
+                    onChange={e => update('returnPincode', e.target.value)} />
+                </label>
+                <label>Return phone *
+                  <input required maxLength={10} inputMode="numeric"
+                    value={form.returnPhone}
+                    onChange={e => update('returnPhone', e.target.value)}
+                    placeholder="10-digit phone" />
+                </label>
+              </div>
+            </section>
+
+            <section className="reverse-card">
+              <h2>Box Details</h2>
+              <label>Package weight (kg) *
+                <input required type="number" min="0.01" step="0.01"
+                  value={form.weightKg} onChange={e => update('weightKg', e.target.value)} />
+              </label>
+              <div className="reverse-grid-three">
+                <label>Length (cm) *
+                  <input required type="number" min="1" step="0.1" value={form.length}
+                    onChange={e => update('length', e.target.value)} />
+                </label>
+                <label>Width (cm) *
+                  <input required type="number" min="1" step="0.1" value={form.width}
+                    onChange={e => update('width', e.target.value)} />
+                </label>
+                <label>Height (cm) *
+                  <input required type="number" min="1" step="0.1" value={form.height}
+                    onChange={e => update('height', e.target.value)} />
+                </label>
+              </div>
+              <label>Original order value (₹) *
+                <input required type="number" min="0" step="0.01" value={form.orderValue}
+                  onChange={e => update('orderValue', e.target.value)} />
+              </label>
+            </section>
+          </div>
+
+          <div className="reverse-form-actions">
+            <button type="button" className="reverse-cancel"
+              disabled={saving} onClick={() => setCreating(false)}>Cancel</button>
+            <button type="submit" className="reverse-primary" disabled={saving}>
+              {saving ? 'Submitting...' : 'Create & Manifest Reverse Order'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="reverse-page">
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow muted">RETURNS MANAGEMENT</div>
+          <h1>Reverse Orders</h1>
+          <p>Manage customer returns and reverse pickups created through this workspace.</p>
+        </div>
+        <button className="reverse-primary" onClick={() => setCreating(true)}>
+          <Plus size={16} /> Create reverse order
+        </button>
+      </div>
+
+      <section className="card table-card">
+        <div className="table-toolbar">
+          <div className="search-input">
+            <Search size={17} />
+            <input aria-label="Search reverse orders"
+              placeholder="Search waybill, reference or customer..."
+              value={query} onChange={e => setQuery(e.target.value)} />
+          </div>
+          <button className="reverse-secondary" onClick={loadOrders} disabled={loading}>
+            <RefreshCw size={15} /> Refresh
+          </button>
+          <span>{filtered.length} reverse orders</span>
+        </div>
+
+        {loading ? (
+          <div className="reverse-empty">Loading reverse orders...</div>
+        ) : error ? (
+          <div className="reverse-empty">
+            <p>{error}</p>
+            <button className="reverse-secondary" onClick={loadOrders}>Try again</button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="reverse-empty">
+            <div className="reverse-empty-icon"><Plus size={28} /></div>
+            <h2>{query ? 'No matching reverse orders' : 'No reverse orders yet'}</h2>
+            <p>{query ? 'Try another search term.' : 'A return order lets your customer return a purchased product.'}</p>
+            {!query && (
+              <button className="reverse-primary" onClick={() => setCreating(true)}>
+                <Plus size={16} /> Create reverse order
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="reverse-table-wrap">
+            <table>
+              <thead><tr>
+                <th>Waybill</th><th>Reference</th><th>Customer</th>
+                <th>Return reason</th><th>Return warehouse</th><th>Status</th>
+              </tr></thead>
+              <tbody>
+                {filtered.map((order, index) => (
+                  <tr key={order.waybill || order.id || index}>
+                    <td>{order.waybill || order.id || '—'}</td>
+                    <td>{order.referenceNumber || order.reference || '—'}</td>
+                    <td>{order.customer || '—'}</td>
+                    <td>{order.returnReason || '—'}</td>
+                    <td>{order.returnWarehouse || order.warehouse || '—'}</td>
+                    <td><span className="reverse-status">{order.status || 'Unknown'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+

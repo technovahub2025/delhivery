@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import LoginPage from './pages/auth/LoginPage';
 import RegistrationPage from './pages/auth/RegistrationPage';
 import WorkspaceLayout from './components/layout/WorkspaceLayout';
@@ -23,6 +23,7 @@ export default function App() {
   const [rememberedEmail, setRememberedEmail] = useState('');
   const [authPage, setAuthPage] = useState('login');
   const [page, setPage] = useState(restored?.page || 'dashboard');
+  const [createPrefill, setCreatePrefill] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
   const [tableSearch, setTableSearch] = useState('');
@@ -35,7 +36,10 @@ export default function App() {
     saveSession(user && sessionToken ? { user, token: sessionToken, page } : null);
   }, [user, sessionToken, page]);
 
-  function navigate(next) {
+  function navigate(next, options = {}) {
+    if (next === 'create') {
+      setCreatePrefill(options.prefill || null);
+    }
     setPage(next);
     if (next === 'shipments') setTableSearch('');
     window.scrollTo(0, 0);
@@ -95,6 +99,7 @@ export default function App() {
               page={page}
               workspace={workspace}
               navigate={navigate}
+              createPrefill={createPrefill}
               notify={notify}
               onDetails={(shipment) => setDetailId(shipment.id)}
               tableSearch={tableSearch}
@@ -111,3 +116,4 @@ export default function App() {
     </>
   );
 }
+

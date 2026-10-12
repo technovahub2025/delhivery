@@ -1,9 +1,11 @@
-import DashboardPage from '../pages/dashboard/DashboardPage';
+﻿import DashboardPage from '../pages/dashboard/DashboardPage';
 import ShippingDocumentsPage from '../pages/documents/ShippingDocumentsPage';
 import WebhookEventsPage from '../pages/events/WebhookEventsPage';
 import PickupRequestsPage from '../pages/pickups/PickupRequestsPage';
 import CreateShipmentPage from '../pages/shipments/CreateShipmentPage';
 import ShipmentsPage from '../pages/shipments/ShipmentsPage';
+import ReverseOrdersPage from '../pages/shipments/ReverseOrdersPage';
+import NdrManagementPage from '../pages/shipments/NdrManagementPage';
 import DeliveryEstimatePage from '../pages/shipping/DeliveryEstimatePage';
 import PincodeServiceabilityPage from '../pages/shipping/PincodeServiceabilityPage';
 import ShippingCalculatorPage from '../pages/shipping/ShippingCalculatorPage';
@@ -16,6 +18,7 @@ export default function WorkspacePages({
   page,
   workspace,
   navigate,
+  createPrefill,
   notify,
   onDetails,
   tableSearch,
@@ -26,6 +29,10 @@ export default function WorkspacePages({
     return <ShipmentLoadState load={workspace.shipmentLoad} />;
   }
   switch (page) {
+    case 'ndr':
+      return <NdrManagementPage />;
+    case 'reverseOrders':
+      return <ReverseOrdersPage notify={notify} />;
     case 'shipments':
       return (
         <ShipmentsPage
@@ -43,7 +50,10 @@ export default function WorkspacePages({
       return (
         <CreateShipmentPage
           warehouses={warehouses}
+          setWarehouses={setWarehouses}
+          notify={notify}
           navigate={navigate}
+          prefill={createPrefill}
           onCreate={async (data) => {
             const shipment = await workspace.createShipment(data);
             notify('Shipment created successfully.');
@@ -67,7 +77,7 @@ export default function WorkspacePages({
     case 'estimate':
       return <DeliveryEstimatePage />;
     case 'calculator':
-      return <ShippingCalculatorPage />;
+      return <ShippingCalculatorPage navigate={navigate} />;
     case 'waybills':
       return <WaybillManagementPage notify={notify} />;
     case 'documents':
@@ -94,3 +104,8 @@ export default function WorkspacePages({
       );
   }
 }
+
+
+
+
+

@@ -1,0 +1,38 @@
+﻿.reverse-page { color: #252b3b; }
+.reverse-form-heading { display:flex; align-items:center; gap:14px; margin: 0 0 24px; }
+.reverse-form-heading h1 { font-size:21px; font-weight:600; margin:0; }
+.reverse-back { width:40px; height:40px; border:1px solid #e1e5ee; border-radius:6px; background:white; display:grid; place-items:center; cursor:pointer; }
+.reverse-learn { border-radius:20px; background:#edf1ff; color:#5368d9; padding:7px 12px; font-size:12px; }
+.reverse-form { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(300px,.9fr); gap:18px; padding-bottom:92px; }
+.reverse-form-main,.reverse-form-side { display:flex; flex-direction:column; gap:18px; min-width:0; }
+.reverse-card { border:1px solid #e3e6ed; border-radius:8px; background:white; padding:20px; min-width:0; }
+.reverse-card h2 { font-size:16px; font-weight:600; margin:0 0 20px; }
+.reverse-card label { display:flex; flex-direction:column; gap:7px; font-size:12px; color:#46516a; margin:0 0 16px; min-width:0; }
+.reverse-card input:not([type=checkbox]),.reverse-card select,.reverse-card textarea { width:100%; min-width:0; box-sizing:border-box; border:1px solid #dce1eb; border-radius:6px; padding:11px 12px; color:#252b3b; background:white; font:inherit; font-size:13px; outline:none; }
+.reverse-card input:focus,.reverse-card select:focus,.reverse-card textarea:focus { border-color:#6579ff; box-shadow:0 0 0 2px #6579ff20; }
+.reverse-card textarea { resize:vertical; }
+.reverse-hint { color:#8a94aa; font-size:12px; line-height:1.5; margin: -8px 0 16px; }
+.reverse-item { position:relative; border:1px solid #edf0f5; background:#fafbfe; border-radius:7px; padding:12px; margin-bottom:12px; }
+.reverse-item label:last-of-type { margin-bottom:0; }
+.reverse-remove { position:absolute; top:8px; right:8px; border:0; background:transparent; color:#b34242; cursor:pointer; }
+.reverse-check { display:flex!important; flex-direction:row!important; align-items:center; gap:9px!important; margin:8px 0 0!important; }
+.reverse-check input { accent-color:#5267ee; }
+.reverse-grid-two,.reverse-grid-three { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.reverse-grid-three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.reverse-primary,.reverse-secondary,.reverse-cancel { display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:5px; padding:11px 15px; font-size:13px; font-weight:600; cursor:pointer; }
+.reverse-primary { border:1px solid #202432; background:#202432; color:white; }
+.reverse-primary:hover { background:#353c50; }
+.reverse-secondary,.reverse-cancel { border:1px solid #dce1eb; background:white; color:#45516b; }
+.reverse-primary:disabled,.reverse-secondary:disabled,.reverse-cancel:disabled { opacity:.55; cursor:not-allowed; }
+.reverse-form-actions { position:fixed; z-index:10; bottom:0; left:var(--sidebar-width, 260px); right:0; display:flex; justify-content:flex-end; gap:12px; padding:14px 24px; border-top:1px solid #e4e7ef; background:#ffffffef; backdrop-filter:blur(10px); }
+.reverse-empty { min-height:310px; padding:38px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+.reverse-empty h2 { font-size:19px; margin:12px 0 7px; }
+.reverse-empty p { color:#7b8499; font-size:13px; }
+.reverse-empty-icon { display:grid; place-items:center; width:56px; height:56px; border-radius:12px; background:#f0f2f8; color:#48516b; }
+.reverse-table-wrap { overflow-x:auto; }
+.reverse-table-wrap table { width:100%; border-collapse:collapse; font-size:13px; }
+.reverse-table-wrap th,.reverse-table-wrap td { padding:14px 16px; text-align:left; border-bottom:1px solid #edf0f5; white-space:nowrap; }
+.reverse-table-wrap th { background:#fafbfe; color:#788198; font-size:11px; font-weight:600; text-transform:uppercase; }
+.reverse-status { display:inline-block; border-radius:20px; padding:5px 9px; background:#fff3df; color:#946117; font-size:11px; }
+@media(max-width:900px) { .reverse-form { grid-template-columns:1fr; } .reverse-form-actions { left:0; padding:12px; } }
+@media(max-width:560px) { .reverse-form-heading { flex-wrap:wrap; } .reverse-card { padding:15px; } .reverse-grid-two { grid-template-columns:1fr; gap:0; } .reverse-grid-three { gap:7px; } .reverse-form-actions { gap:8px; } .reverse-form-actions button { padding:10px; font-size:11px; } .reverse-page .page-heading { align-items:flex-start; gap:12px; flex-wrap:wrap; } }

@@ -1,4 +1,4 @@
-export const API_BASE_URL = (
+﻿export const API_BASE_URL = (
   process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000/api'
 ).replace(/\/$/, '');
 let token = null;
@@ -107,6 +107,7 @@ const post = (path, body) => apiRequest(path, { method: 'POST', body });
 const get = (path, query) => apiRequest(`/delhivery/${path}`, { query });
 export const api = {
   shipments: (query, signal) => apiRequest('/delhivery/shipments', { query, signal }),
+  lookupOriginalShipment: (waybill) => apiRequest('/delhivery/shipments/lookup', { query: { waybill } }),
   login: (body) => post('/auth/login', body),
   register: (body) => post('/auth/register', body),
   pincode: (pincode, heavy) => get(heavy ? 'pincode/heavy' : 'pincode', { pincode }),
@@ -114,9 +115,14 @@ export const api = {
   cost: (query) => get('shipping-cost', query),
   waybills: (count) => get('waybills', { count }),
   track: (query) => get('shipments/track', query),
+  actionRequired: () => get('dashboard/action-required'),
   label: (waybill) => get('shipping-label', { waybill, pdf: true }),
   documents: (waybill) => get('documents', { waybill }),
   createShipment: (body) => post('/delhivery/shipments', body),
+  ndrUpdate: (body) => post('/delhivery/ndr/update', body),
+  ndrStatus: (uplId) => get(`ndr/status/${encodeURIComponent(uplId)}`),
+  reverseOrders: () => get('reverse-orders'),
+  createReverseOrder: (body) => post('/delhivery/reverse-orders', body),
   updateShipment: (body) => post('/delhivery/shipments/update', body),
   cancelShipment: (waybill) => post('/delhivery/shipments/cancel', { waybill }),
   updateEwaybill: (body) => post('/delhivery/shipments/ewaybill', body),
@@ -167,3 +173,6 @@ export function parseWaybills(result) {
   }
   return [...new Set(value.map(String))];
 }
+
+
+
