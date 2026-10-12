@@ -1,5 +1,5 @@
 ﻿export const API_BASE_URL = (
-  process.env.REACT_APP_API_BASE_URL || 'REACT_APP_API_BASE_URL/api'
+  process.env.REACT_APP_API_BASE_URL || 'https://delhivery-backebnd.onrender.com/api'
 ).replace(/\/$/, '');
 let token = null;
 export function setAuthToken(value) {
@@ -173,6 +173,5 @@ export function parseWaybills(result) {
   }
   return [...new Set(value.map(String))];
 }
-
 
 

@@ -21,6 +21,15 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
+test('login posts credentials to the deployed backend', async () => {
+  const credentials = { email: 'test@example.com', password: 'test-only' };
+  await api.login(credentials);
+  expect(fetch).toHaveBeenCalledWith(
+    'https://delhivery-backebnd.onrender.com/api/auth/login',
+    expect.objectContaining({ method: 'POST', body: JSON.stringify(credentials) })
+  );
+});
+
 test.each([
   ['standard coverage', () => api.pincode('110001', false), '/delhivery/pincode?pincode=110001'],
   ['heavy coverage', () => api.pincode('110001', true), '/delhivery/pincode/heavy?pincode=110001'],
@@ -37,7 +46,7 @@ test.each([
 ])('%s sends encoded GET query with no body', async (_, call, path) => {
   await call();
   expect(fetch).toHaveBeenCalledWith(
-    'REACT_APP_API_BASE_URL/api' + path,
+    'https://delhivery-backebnd.onrender.com/api' + path,
     expect.objectContaining({ method: 'GET' })
   );
   expect(fetch.mock.calls[0][1].body).toBeUndefined();
@@ -50,7 +59,7 @@ test.each([
 ])('%s sends JSON to the correct route', async (method, body, path) => {
   await api[method](body);
   expect(fetch).toHaveBeenCalledWith(
-    'REACT_APP_API_BASE_URL/api' + path,
+    'https://delhivery-backebnd.onrender.com/api' + path,
     expect.objectContaining({
       method: 'POST',
       body: JSON.stringify(body),
