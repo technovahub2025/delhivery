@@ -37,7 +37,7 @@ test.each([
 ])('%s sends encoded GET query with no body', async (_, call, path) => {
   await call();
   expect(fetch).toHaveBeenCalledWith(
-    'http://localhost:3000/api' + path,
+    'REACT_APP_API_BASE_URL/api' + path,
     expect.objectContaining({ method: 'GET' })
   );
   expect(fetch.mock.calls[0][1].body).toBeUndefined();
@@ -50,7 +50,7 @@ test.each([
 ])('%s sends JSON to the correct route', async (method, body, path) => {
   await api[method](body);
   expect(fetch).toHaveBeenCalledWith(
-    'http://localhost:3000/api' + path,
+    'REACT_APP_API_BASE_URL/api' + path,
     expect.objectContaining({
       method: 'POST',
       body: JSON.stringify(body),

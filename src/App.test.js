@@ -160,7 +160,7 @@ test('account source errors show retry without false empty statistics', async ()
   expect(screen.queryByText('No shipments yet')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Total shipments/ })).not.toBeInTheDocument();
   expect(lastRequest()).toMatchObject({
-    url: 'http://localhost:3000/api/delhivery/shipments?page=1&limit=100',
+    url: 'REACT_APP_API_BASE_URL/api/delhivery/shipments?page=1&limit=100',
     headers: { Authorization: 'Bearer test-jwt' },
   });
   respond({ success: true, data: { shipments: [], total: 0, page: 1, limit: 100 } });
@@ -248,7 +248,7 @@ test('registration validates confirmation then posts only required account field
   fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
   await screen.findByRole('button', { name: 'Log in' });
   expect(lastRequest()).toMatchObject({
-    url: 'http://localhost:3000/api/auth/register',
+    url: 'REACT_APP_API_BASE_URL/api/auth/register',
     body: { name: 'Test User', email: 'test@example.com', password: 'password123' },
   });
 });
@@ -290,7 +290,7 @@ test('shipping tools use GET query parameters and show nested provider failures'
   fireEvent.click(mainButton('Check serviceability'));
   await screen.findByText('Mumbai');
   expect(lastRequest()).toMatchObject({
-    url: 'http://localhost:3000/api/delhivery/pincode/heavy?pincode=400001',
+    url: 'REACT_APP_API_BASE_URL/api/delhivery/pincode/heavy?pincode=400001',
     method: 'GET',
     headers: { Authorization: 'Bearer test-jwt' },
   });
