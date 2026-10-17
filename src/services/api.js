@@ -1,5 +1,5 @@
 ﻿export const API_BASE_URL = (
-  'http://localhost:3000/api'
+  'https://delhivery-backebnd-36kc.onrender.com/api'
 ).replace(/\/$/, '');
 let token = null;
 export function setAuthToken(value) {
