@@ -1,11 +1,11 @@
-import { Building2, Plus, Truck } from 'lucide-react';
+﻿import { Building2, Plus, Truck } from 'lucide-react';
 import { useState } from 'react';
 
 import PickupRequestDialog from '../../components/pickups/PickupRequestDialog';
 import { Badge, Button, Empty } from '../../components/ui';
 import PageHeading from '../../components/ui/PageHeading';
 
-export default function PickupRequestsPage({ warehouses, pickups, setPickups, notify }) {
+export default function PickupRequestsPage({ warehouses, pickups, setPickups, pickupLoad, onCreated, notify }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('All requests');
   const rows = pickups.filter((p) => filter === 'All requests' || p.status === filter);
@@ -13,9 +13,9 @@ export default function PickupRequestsPage({ warehouses, pickups, setPickups, no
     <>
       <div className="heading-with-action">
         <PageHeading
-          title="We’ll take it from here."
+          title="Weâ€™ll take it from here."
           eyebrow="PICKUP REQUESTS"
-          description="Schedule a pickup. We’ll handle the next mile."
+          description="Schedule a pickup. Weâ€™ll handle the next mile."
         />
         <Button onClick={() => setOpen(true)}>
           <Plus size={17} />
@@ -49,6 +49,13 @@ export default function PickupRequestsPage({ warehouses, pickups, setPickups, no
           ))}
         </div>
         <div className="table-scroll">
+          {pickupLoad?.status === "loading" && <p className="muted">Loading saved pickup requests...</p>}
+          {pickupLoad?.status === "error" && (
+            <div role="alert" className="error">
+              <p>{pickupLoad.error}</p>
+              <Button variant="secondary" onClick={pickupLoad.retry}>Retry</Button>
+            </div>
+          )}
           <table>
             <thead>
               <tr>
@@ -81,7 +88,7 @@ export default function PickupRequestsPage({ warehouses, pickups, setPickups, no
               ))}
             </tbody>
           </table>
-          {!rows.length && (
+          {!rows.length && pickupLoad?.status !== "loading" && pickupLoad?.status !== "error" && (
             <Empty
               title="No pickup requests"
               description="Create a pickup request to get things moving."
@@ -94,9 +101,12 @@ export default function PickupRequestsPage({ warehouses, pickups, setPickups, no
           warehouses={warehouses}
           setOpen={setOpen}
           setPickups={setPickups}
+          onCreated={onCreated}
           notify={notify}
         />
       )}
     </>
   );
 }
+
+

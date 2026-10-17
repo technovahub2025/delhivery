@@ -1,5 +1,5 @@
 ﻿export const API_BASE_URL = (
-  process.env.REACT_APP_API_BASE_URL || 'https://delhivery-backebnd.onrender.com/api'
+  'http://localhost:3000/api'
 ).replace(/\/$/, '');
 let token = null;
 export function setAuthToken(value) {
@@ -119,6 +119,7 @@ export const api = {
   label: (waybill) => get('shipping-label', { waybill, pdf: true }),
   documents: (waybill) => get('documents', { waybill }),
   createShipment: (body) => post('/delhivery/shipments', body),
+  ndrCases: () => get('ndr/cases'),
   ndrUpdate: (body) => post('/delhivery/ndr/update', body),
   ndrStatus: (uplId) => get(`ndr/status/${encodeURIComponent(uplId)}`),
   reverseOrders: () => get('reverse-orders'),
@@ -126,9 +127,14 @@ export const api = {
   updateShipment: (body) => post('/delhivery/shipments/update', body),
   cancelShipment: (waybill) => post('/delhivery/shipments/cancel', { waybill }),
   updateEwaybill: (body) => post('/delhivery/shipments/ewaybill', body),
+  pickups: (signal) => apiRequest('/delhivery/pickups', { signal }),
   pickup: (body) => post('/delhivery/pickups', body),
   createWarehouse: (body) => post('/delhivery/warehouses', body),
   updateWarehouse: (body) => post('/delhivery/warehouses/update', body),
+  reports: () => apiRequest("/reports"),
+  createReport: (body) => apiRequest("/reports", { method: "POST", body }),
+  updateReport: (id, body) => apiRequest(`/reports/${encodeURIComponent(id)}`, { method: "PATCH", body }),
+  deleteReport: (id) => apiRequest(`/reports/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 export const unwrap = (result) => result.data ?? result;
 
@@ -173,5 +179,10 @@ export function parseWaybills(result) {
   }
   return [...new Set(value.map(String))];
 }
+
+
+
+
+
 
 

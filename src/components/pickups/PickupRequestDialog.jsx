@@ -1,10 +1,10 @@
-import { api, unwrap } from '../../services/api';
+﻿import { api, unwrap } from '../../services/api';
 import useApiAction from '../../hooks/useApiAction';
 import { CalendarDays } from 'lucide-react';
 
 import { Button, Field, Modal } from '../ui';
 
-export default function PickupRequestDialog({ warehouses, setOpen, setPickups, notify }) {
+export default function PickupRequestDialog({ warehouses, setOpen, setPickups, onCreated, notify }) {
   const { busy, error, run } = useApiAction();
   const today = new Date();
   const latest = new Date();
@@ -32,14 +32,15 @@ export default function PickupRequestDialog({ warehouses, setOpen, setPickups, n
                 expected_package_count: Number(d.count),
               })
             );
+            const created = response?.pickup;
+            if (!created || typeof created.id !== "string" || !created.id) {
+              throw new Error("The backend did not return a saved pickup record. Check Delhivery before retrying.");
+            }
             setPickups((list) => [
-              {
-                ...d,
-                id: String(response.pickup_id || response.id || Date.now()),
-                status: 'Scheduled',
-              },
-              ...list,
+              { ...d, ...created, id: String(created.id), count: Number(created.count) },
+              ...list.filter((item) => item.id !== String(created.id)),
             ]);
+            onCreated?.();
             setOpen(false);
             notify('Pickup request submitted.');
           });
@@ -92,3 +93,5 @@ export default function PickupRequestDialog({ warehouses, setOpen, setPickups, n
     </Modal>
   );
 }
+
+

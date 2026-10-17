@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+﻿import { useRef, useState } from 'react';
 
 import { api, unwrap, shipmentPayload } from '../services/api';
 
 import { initialPickups, initialShipments } from '../data/demo';
 import useAccountShipments from './useAccountShipments';
+import useAccountPickups from './useAccountPickups';
 import useSavedWarehouses from './useSavedWarehouses';
 
 // Shared in-memory data belongs to the workspace; page-only form state stays on each page.
@@ -21,6 +22,7 @@ export default function useDemoWorkspace(token, user) {
     reset: resetWarehouses,
   } = useSavedWarehouses(user);
   const [pickups, setPickups] = useState(initialPickups);
+  const pickupLoad = useAccountPickups(token, setPickups);
   const shipmentLoad = useAccountShipments(token, setShipments);
 
   async function createShipment(data) {
@@ -61,6 +63,7 @@ export default function useDemoWorkspace(token, user) {
   return {
     reset: () => {
       shipmentLoad.cancel();
+      pickupLoad.cancel();
       generation.current += 1;
       setShipments([]);
       resetWarehouses();
@@ -73,7 +76,9 @@ export default function useDemoWorkspace(token, user) {
     warehouseError,
     setWarehouses: scoped(setWarehouses),
     pickups,
+    pickupLoad,
     setPickups: scoped(setPickups),
     createShipment,
   };
 }
+

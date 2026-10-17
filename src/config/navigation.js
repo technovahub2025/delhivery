@@ -1,8 +1,11 @@
 ﻿import {
+  AlertTriangle,
   Box,
   Building2,
   Calculator,
+  ChevronRight,
   RotateCcw,
+  FileBarChart,
   Clock3,
   Code2,
   FileText,
@@ -18,12 +21,27 @@ export const navGroups = [
     'WORKSPACE',
     [
       ['dashboard', 'Overview', LayoutDashboard],
-      ['shipments', 'Shipments', Package],
-      ['ndr', 'NDR Management', RotateCcw],
-      ['reverseOrders', 'Reverse Orders', Package],
+      [
+        'ordersPickups',
+        'Orders & Pickups',
+        Package,
+        [
+          ['shipments', 'Forward Orders', Package],
+          ['reverseOrders', 'Reverse Orders', RotateCcw],
+          ['pickups', 'Pickup Requests', Truck],
+        ],
+      ],
+      [
+        'deliveryExceptions',
+        'Delivery Exceptions',
+        AlertTriangle,
+        [
+          ['ndr', 'NDR', RotateCcw],
+          ['exceptions', 'Exceptions', AlertTriangle],
+        ],
+      ],
       ['create', 'Create shipment', Plus],
       ['tracking', 'Track shipment', MapPin],
-      ['pickups', 'Pickup requests', Truck],
     ],
   ],
   [
@@ -41,8 +59,11 @@ export const navGroups = [
     [
       ['warehouses', 'Warehouses', Building2],
       ['events', 'Webhook events', Code2],
+      ['reports', 'Reports', FileBarChart],
+      ['finance', 'Finance', Calculator],
     ],
   ],
 ];
+
 
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, Box, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Clock3, Plus, Truck, XCircle } from 'lucide-react';
+﻿import { AlertTriangle, Box, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Clock3, Plus, Truck, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import DeliveryStatusChart from '../../components/dashboard/DeliveryStatusChart';
 import QuickActions from '../../components/dashboard/QuickActions';
@@ -29,22 +29,39 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
       active = false;
     };
   }, []);
+  const normalizeStatus = (status) =>
+    String(status || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ');
+
+  const countStatus = (statuses) =>
+    shipments.filter((shipment) =>
+      statuses.includes(normalizeStatus(shipment.status))
+    ).length;
+
   const stats = [
     ['Total shipments', shipments.length, Box, 'orange'],
-    ['In transit', shipments.filter((s) => s.status === 'In transit').length, Truck, 'blue'],
-    ['Delivered', shipments.filter((s) => s.status === 'Delivered').length, CheckCheck, 'green'],
+    [
+      'In transit',
+      countStatus(['in transit', 'intransit', 'picked up', 'out for delivery']),
+      Truck,
+      'blue',
+    ],
+    ['Delivered', countStatus(['delivered']), CheckCheck, 'green'],
     [
       'Pending pickup',
-      shipments.filter((s) => s.status === 'Pending pickup').length,
+      countStatus(['pending pickup', 'ready for pickup']),
       Clock3,
       'amber',
     ],
-    ['Cancelled', shipments.filter((s) => s.status === 'Cancelled').length, XCircle, 'red'],
+    ['Cancelled', countStatus(['cancelled', 'canceled']), XCircle, 'red'],
   ];
   const actionRequired = [
     {
       label: 'Bad Addresses',
-      count: actionData?.badAddresses ?? 0,
+      count: actionData?.badAddressesAvailable === false ? '—' : (actionData?.badAddresses ?? '—'),
       action: 'Act Now',
     },
   ];
@@ -134,7 +151,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
               aria-label="Close"
               onClick={() => setShowBadAddressModal(false)}
             >
-              Ã—
+              Ãƒâ€”
             </button>
 
             <div className="bad-address-modal-header">
@@ -147,7 +164,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
               <div className="bad-address-action-card">
                 <div className="bad-address-card-title">PENDING</div>
                 <div className="bad-address-card-content">
-                  <div className="bad-address-card-count">0</div>
+                  <div className="bad-address-card-count">—</div>
                   <div className="bad-address-card-label">Bad Addresses</div>
                 </div>
                 <button type="button" disabled>
@@ -159,7 +176,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
                 <div className="bad-address-card-title">READY TO SHIP</div>
                 <div className="bad-address-card-content">
                   <div className="bad-address-card-count">
-                    {actionData?.badAddresses ?? 0}
+                    {actionData?.badAddressesAvailable === false ? '—' : (actionData?.badAddresses ?? '—')}
                   </div>
                   <div className="bad-address-card-label">Bad Addresses</div>
                 </div>
@@ -179,7 +196,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
                   READY FOR PICKUP
                 </div>
                 <div className="bad-address-card-content">
-                  <div className="bad-address-card-count">0</div>
+                  <div className="bad-address-card-count">—</div>
                   <div className="bad-address-card-label">Bad Addresses</div>
                 </div>
                 <button type="button" disabled>
@@ -208,7 +225,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
       <QuickActions navigate={navigate} />
       <div className="page-foot">
         <span>
-          <ShieldIcon /> Workspace overview <span className="foot-separator">Ã‚Â·</span> Manage your
+          <ShieldIcon /> Workspace overview <span className="foot-separator">Ãƒâ€šÃ‚Â·</span> Manage your
           shipments in one place.
         </span>
         <span>
@@ -226,6 +243,8 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
 function ShieldIcon() {
   return <span className="pulse-dot" />;
 }
+
+
 
 
 

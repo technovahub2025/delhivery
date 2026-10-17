@@ -1,4 +1,6 @@
 ﻿import DashboardPage from '../pages/dashboard/DashboardPage';
+import ReportsPage from '../pages/reports/ReportsPage';
+import FinancePage from '../pages/finance/FinancePage';
 import ShippingDocumentsPage from '../pages/documents/ShippingDocumentsPage';
 import WebhookEventsPage from '../pages/events/WebhookEventsPage';
 import PickupRequestsPage from '../pages/pickups/PickupRequestsPage';
@@ -6,6 +8,7 @@ import CreateShipmentPage from '../pages/shipments/CreateShipmentPage';
 import ShipmentsPage from '../pages/shipments/ShipmentsPage';
 import ReverseOrdersPage from '../pages/shipments/ReverseOrdersPage';
 import NdrManagementPage from '../pages/shipments/NdrManagementPage';
+import ExceptionsPage from '../pages/shipments/ExceptionsPage';
 import DeliveryEstimatePage from '../pages/shipping/DeliveryEstimatePage';
 import PincodeServiceabilityPage from '../pages/shipping/PincodeServiceabilityPage';
 import ShippingCalculatorPage from '../pages/shipping/ShippingCalculatorPage';
@@ -29,8 +32,14 @@ export default function WorkspacePages({
     return <ShipmentLoadState load={workspace.shipmentLoad} />;
   }
   switch (page) {
+    case 'reports':
+      return <ReportsPage />;
+    case 'finance':
+      return <FinancePage />;
     case 'ndr':
       return <NdrManagementPage />;
+    case 'exceptions':
+      return <ExceptionsPage />;
     case 'reverseOrders':
       return <ReverseOrdersPage notify={notify} />;
     case 'shipments':
@@ -67,7 +76,9 @@ export default function WorkspacePages({
       return (
         <PickupRequestsPage
           pickups={pickups}
+          pickupLoad={workspace.pickupLoad}
           setPickups={setPickups}
+          onCreated={workspace.pickupLoad.retry}
           warehouses={warehouses}
           notify={notify}
         />
@@ -104,6 +115,11 @@ export default function WorkspacePages({
       );
   }
 }
+
+
+
+
+
 
 
 
