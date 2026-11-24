@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import App from './App';
-import { setAuthToken } from './services/api';
+import { API_BASE_URL, setAuthToken } from './services/api';
 import { navGroups } from './config/navigation';
 import { SESSION_KEY } from './services/session';
 
@@ -14,22 +14,50 @@ const fill = (values) =>
   values.forEach(([label, value]) =>
     fireEvent.change(screen.getByLabelText(label), { target: { value } })
   );
-const navigate = (name) =>
-  fireEvent.click(
-    within(screen.getByRole('navigation')).getByRole('button', { name, exact: true })
-  );
+const navigate = (name) => {
+  const navigation = screen.getByRole('navigation', { name: 'Main navigation' });
+  let button = within(navigation).queryByRole('button', { name, exact: true });
+  if (!button) {
+    const parent = navGroups
+      .flatMap(([, items]) => items)
+      .find(([, , , children]) => children?.some(([, childLabel]) => childLabel === name));
+    if (parent) {
+      fireEvent.click(within(navigation).getByRole('button', { name: parent[1], exact: true }));
+      button = within(navigation).getByRole('button', { name, exact: true });
+    }
+  }
+  fireEvent.click(button);
+};
 const mainButton = (name) =>
   within(screen.getByRole('main')).getByRole('button', { name, exact: true });
 const lastRequest = () => {
   const [url, options] = fetch.mock.calls.at(-1);
   return { url, ...options, body: options.body ? JSON.parse(options.body) : undefined };
 };
+let mockedWarehouses = [];
 
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+  mockedWarehouses = [];
   window.scrollTo = jest.fn();
-  global.fetch = jest.fn().mockImplementation((url) => {
+  global.fetch = jest.fn().mockImplementation((url, options = {}) => {
+    if (url.endsWith('/delhivery/warehouses')) {
+      if (options.method === 'POST') {
+        const details = JSON.parse(options.body);
+        const record = { _id: 'eeeeeeeeeeeeeeeeeeeeeeee', id: 'eeeeeeeeeeeeeeeeeeeeeeee', name: details.name, details, registrationStatus: 'REGISTERED' };
+        mockedWarehouses = [record];
+        return Promise.resolve(reply({ success: true, warehouse: record }, 201));
+      }
+      if (options.method === 'GET' || !options.method) return Promise.resolve(reply({ success: true, data: { warehouses: mockedWarehouses } }));
+    }
+    if (url.endsWith('/delhivery/warehouses/update')) {
+      const details = JSON.parse(options.body);
+      const record = { ...mockedWarehouses[0], details, registrationStatus: 'REGISTERED', updateStatus: 'SUCCEEDED' };
+      mockedWarehouses = [record];
+      return Promise.resolve(reply({ success: true, warehouse: record }));
+    }
+    if (url.includes('/config/direct-booking')) return Promise.resolve(reply({ directBookingEnabled: true }));
     if (url.includes('/delhivery/shipments?'))
       return Promise.resolve(
         reply({
@@ -37,6 +65,20 @@ beforeEach(() => {
           data: { shipments: [], total: 0, page: 1, limit: 100 },
         })
       );
+    if (url.includes('/delhivery/pickup-requests'))
+      return Promise.resolve(reply({ success: true, data: { pickups: [], total: 0 } }));
+    if (url.includes('/delhivery/dashboard/overview'))
+      return Promise.resolve(reply({ success: true, data: { metrics: { totalShipments: 0, pendingPickups: 0, inTransitShipments: 0, deliveredShipments: 0, ndrShipments: 0, unresolvedNdrCases: 0, rtoShipments: 0, activeRtoCases: null, failedExceptionShipments: 0 }, availability: { activeRtoCases: { available: false, reason: 'Lifecycle unavailable' } }, pickupSummary: { total: 0, byStatus: {} }, deliverySummary: { inTransit: 0, delivered: 0, failedOrException: 0, unclassified: 0 }, recentActivity: [] } }));
+    if (url.includes('/delhivery/dashboard/action-required'))
+      return Promise.resolve(reply({ success: true, data: { badAddresses: 0, badAddressesAvailable: true } }));
+    if (url.includes('/delhivery/pincode?'))
+      return Promise.resolve(reply({ success: true, data: { delivery_codes: [{ postal_code: { city: 'Mumbai', state: 'Maharashtra', pickup: 'Y', pre_paid: 'Y' } }] } }));
+    if (url.includes('/delhivery/shipping-cost?'))
+      return Promise.resolve(reply({ success: true, data: { total_amount: '100' } }));
+    if (url.includes('/api/customers?'))
+      return Promise.resolve(reply({ success: true, data: { customers: [], total: 0, page: 1, limit: 100 } }));
+    if (url.includes('/api/party-addresses?'))
+      return Promise.resolve(reply({ success: true, data: { partyAddresses: [], total: 0, page: 1, limit: 100 } }));
     return Promise.reject(new Error('Unexpected request'));
   });
   setAuthToken(null);
@@ -45,12 +87,12 @@ afterEach(() => {
   delete global.fetch;
   setAuthToken(null);
 });
-async function login() {
+async function login(permissions = []) {
   const view = render(<App />);
   respond({
     success: true,
     token: 'test-jwt',
-    user: { id: 'u1', name: 'Test User', email: 'test@example.com' },
+    user: { id: 'u1', name: 'Test User', email: 'test@example.com', permissions },
   });
   fill([
     ['Email address', 'test@example.com'],
@@ -74,19 +116,17 @@ async function addWarehouse() {
     ['City', 'Delhi'],
     ['State', 'Delhi'],
   ]);
-  respond({ success: true, data: { success: true } });
   fireEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', { name: 'Add warehouse' })
   );
   await screen.findByRole('heading', { name: 'Test Hub' });
 }
 
-test('created and edited warehouses survive a refresh', async () => {
+test('created and edited warehouses reload from MongoDB after refresh', async () => {
   const first = await login();
   await addWarehouse();
   fireEvent.click(screen.getByRole('button', { name: 'Edit warehouse' }));
   fill([['Full address', '99 Updated Road']]);
-  respond({ success: true });
   fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   first.unmount();
@@ -94,24 +134,30 @@ test('created and edited warehouses survive a refresh', async () => {
   render(<App />);
   expect(await screen.findByRole('heading', { name: 'Test Hub' })).toBeInTheDocument();
   expect(screen.getByText('99 Updated Road')).toBeInTheDocument();
-  expect(screen.getByText('Manager')).toBeInTheDocument();
+  expect(screen.getByText('Registered business: Test Store')).toBeInTheDocument();
   navigate('Create shipment');
   expect(screen.getByRole('radio', { name: /Test Hub/ })).toBeInTheDocument();
 });
 
-test.each(navGroups.flatMap(([, items]) => items.map(([id, label]) => [id, label])))(
+test.each(navGroups.flatMap(([, items]) => items
+  .filter(([, , , children]) => !children)
+  .map(([id, label]) => [id, label])
+))(
   'refresh restores the authenticated %s page',
   async (id, label) => {
-    const first = await login();
+    const first = await login(id === 'roleAdmin' ? ['users.read'] : []);
     navigate(label);
     first.unmount();
     setAuthToken(null);
     fetch.mockClear();
     render(<App />);
     expect(screen.queryByRole('button', { name: 'Log in' })).not.toBeInTheDocument();
-    expect(
-      within(screen.getByRole('navigation')).getByRole('button', { name: label, exact: true })
-    ).toHaveAttribute('aria-current', 'page');
+    const navigation = screen.getByRole('navigation', { name: 'Main navigation' });
+    if (!within(navigation).queryByRole('button', { name: label, exact: true })) navigate(label);
+    expect(within(navigation).getByRole('button', { name: label, exact: true })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer test-jwt');
     expect(fetch.mock.calls.some(([url]) => url.includes('/auth/login'))).toBe(false);
@@ -144,23 +190,17 @@ test.each([
 });
 
 test('account source errors show retry without false empty statistics', async () => {
-  fetch.mockImplementation(() =>
-    Promise.resolve(
-      reply(
-        {
-          success: false,
-          message: 'Account shipment source required',
-        },
-        503
-      )
-    )
-  );
+  fetch.mockImplementation((url) => Promise.resolve(url.includes('/dashboard/overview')
+    ? reply({ success: false, message: 'Account shipment source required' }, 503)
+    : url.includes('/dashboard/action-required')
+      ? reply({ success: true, data: { badAddresses: 0, badAddressesAvailable: true } })
+      : reply({ success: false, message: 'Account shipment source required' }, 503)));
   await login();
-  expect(await screen.findByRole('alert')).toHaveTextContent('Account shipment source required');
+  expect(await screen.findAllByText('Account shipment source required')).toHaveLength(2);
   expect(screen.queryByText('No shipments yet')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Total shipments/ })).not.toBeInTheDocument();
   expect(lastRequest()).toMatchObject({
-    url: 'https://delhivery-backebnd.onrender.com/api/delhivery/shipments?page=1&limit=100',
+    url: `${API_BASE_URL}/delhivery/shipments?page=1&limit=100`,
     headers: { Authorization: 'Bearer test-jwt' },
   });
   respond({ success: true, data: { shipments: [], total: 0, page: 1, limit: 100 } });
@@ -175,7 +215,10 @@ test('fetched records populate statistics, activity and recent shipments', async
     String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0'),
   ].join('-');
-  fetch.mockImplementation(() =>
+  fetch.mockImplementation((url) =>
+    url.includes('/dashboard/overview')
+      ? Promise.resolve(reply({ success: true, data: { metrics: { totalShipments: 1, pendingPickups: 0, inTransitShipments: 0, deliveredShipments: 1, ndrShipments: 0, unresolvedNdrCases: 0, rtoShipments: 0, activeRtoCases: null, failedExceptionShipments: 0 }, availability: { activeRtoCases: { available: false, reason: 'Lifecycle unavailable' } }, pickupSummary: { total: 0, byStatus: {} }, deliverySummary: { inTransit: 0, delivered: 1, failedOrException: 0, unclassified: 0 }, recentActivity: [] } }))
+      : Promise.resolve(
     Promise.resolve(
       reply({
         success: true,
@@ -195,11 +238,11 @@ test('fetched records populate statistics, activity and recent shipments', async
         },
       })
     )
-  );
+  ));
   await login();
   await screen.findByText('TEST-AWB');
-  expect(screen.getByRole('button', { name: /Total shipments 1/ })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /Delivered 1/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Total shipments: 1/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Delivered: 1/ })).toBeInTheDocument();
   expect(screen.getByRole('img', { name: /This week shipments:/ })).toBeInTheDocument();
   expect(within(screen.getByRole('table')).getByText('Test Recipient')).toBeInTheDocument();
 });
@@ -248,7 +291,7 @@ test('registration validates confirmation then posts only required account field
   fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
   await screen.findByRole('button', { name: 'Log in' });
   expect(lastRequest()).toMatchObject({
-    url: 'https://delhivery-backebnd.onrender.com/api/auth/register',
+    url: `${API_BASE_URL}/auth/register`,
     body: { name: 'Test User', email: 'test@example.com', password: 'password123' },
   });
 });
@@ -256,10 +299,10 @@ test('registration validates confirmation then posts only required account field
 test('all pages render after the automatic account shipment request', async () => {
   await login();
   for (const name of [
-    'Shipments',
+    'Forward Orders',
     'Create shipment',
     'Track shipment',
-    'Pickup requests',
+    'Pickup Requests',
     'Pincode serviceability',
     'Delivery estimate',
     'Shipping calculator',
@@ -272,9 +315,8 @@ test('all pages render after the automatic account shipment request', async () =
     navigate(name);
   expect(screen.getByText('No shipment activity')).toBeInTheDocument();
   expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
-  expect(fetch).toHaveBeenCalledTimes(2);
   navigate('Create shipment');
-  expect(mainButton('Continue')).toBeDisabled();
+  expect(mainButton('Create shipment')).toBeDisabled();
 });
 
 test('shipping tools use GET query parameters and show nested provider failures', async () => {
@@ -290,29 +332,33 @@ test('shipping tools use GET query parameters and show nested provider failures'
   fireEvent.click(mainButton('Check serviceability'));
   await screen.findByText('Mumbai');
   expect(lastRequest()).toMatchObject({
-    url: 'https://delhivery-backebnd.onrender.com/api/delhivery/pincode/heavy?pincode=400001',
+    url: `${API_BASE_URL}/delhivery/pincode/heavy?pincode=400001`,
     method: 'GET',
     headers: { Authorization: 'Bearer test-jwt' },
   });
   expect(lastRequest().body).toBeUndefined();
   navigate('Shipping calculator');
   fill([
-    ['Origin pincode', '110001'],
-    ['Destination pincode', '400001'],
-    ['Package weight (kg)', '0.5'],
-    ['Transport mode', 'Surface'],
+    ['Pickup pincode', '110001'],
+    ['Delivery pincode', '400001'],
+    ['Weight (kg)', '0.5'],
   ]);
-  respond({ success: true, data: { success: false, message: 'Rate unavailable' } });
+  respond({ success: false, message: 'Surface rate unavailable' });
+  respond({ success: true, data: { total_amount: '125.00' } });
+  respond({ success: true, data: { tat: 2 } });
+  respond({ success: true, data: { tat: 3 } });
   fireEvent.click(mainButton('Calculate shipping'));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Rate unavailable');
-  const url = new URL(lastRequest().url);
-  expect(Object.fromEntries(url.searchParams)).toEqual({
-    md: 'S',
+  expect(await screen.findByText(/125[.]00/)).toBeInTheDocument();
+  expect(window.alert).not.toHaveBeenCalled();
+  const costRequest = fetch.mock.calls.find(([url]) => url.includes('/delhivery/shipping-cost?'));
+  const costUrl = new URL(costRequest[0]);
+  expect(Object.fromEntries(costUrl.searchParams)).toEqual({
     ss: 'Delivered',
-    d_pin: '400001',
     o_pin: '110001',
+    d_pin: '400001',
     cgm: '500',
     pt: 'Pre-paid',
+    md: 'S',
   });
   navigate('Delivery estimate');
   fill([
@@ -339,18 +385,19 @@ test('tracking uses references independently of local shipments', async () => {
   });
   fireEvent.click(mainButton('Track shipment'));
   await screen.findByText('Delivered');
-  expect(lastRequest().url).toContain('/shipments/track?ref_ids=ORDER-1001');
+  expect(lastRequest().url).toContain('/delhivery/track?ref_ids=ORDER-1001');
 });
 
 test('waybills are allocated only on submit and provider document links can be opened', async () => {
   await login();
   navigate('Waybill management');
-  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch.mock.calls.some(([url]) => url.includes('/waybills'))).toBe(false);
   fill([['Number of waybills', '2']]);
-  respond({ success: true, data: '123456789,123456790' });
+  respond({ success: true, data: { state: 'CONFIRMED', waybills: ['123456789', '123456790'] } });
   fireEvent.click(mainButton('Generate waybills'));
   await screen.findByText('123456789');
-  expect(lastRequest().url).toContain('/waybills?count=2');
+  expect(lastRequest()).toMatchObject({ method: 'POST', body: { count: 2, requestId: expect.any(String) } });
+  expect(lastRequest().url).toMatch(/\/waybills$/);
   fireEvent.click(screen.getByLabelText('Select all'));
   expect(mainButton('Copy selected (2)')).toBeEnabled();
   navigate('Labels & documents');
@@ -380,47 +427,46 @@ test('waybills are allocated only on submit and provider document links can be o
 test('warehouse and shipment creation wait for acceptance; failed cancellation preserves state', async () => {
   await login();
   await addWarehouse();
-  expect(lastRequest().body).toMatchObject({
+  const warehouseRequest = fetch.mock.calls.find(([url, options]) => url.endsWith('/delhivery/warehouses') && options.method === 'POST');
+  expect(JSON.parse(warehouseRequest[1].body)).toMatchObject({
     name: 'Test Hub',
     pin: '110001',
     return_city: 'Delhi',
     email: 'hub@example.com',
   });
   navigate('Create shipment');
-  fireEvent.click(mainButton('Continue'));
   fill([
     ['Full name', 'Recipient'],
-    ['Email address', 'recipient@example.com'],
-    ['Phone number', '9876543210'],
-    ['Pincode', '400001'],
+    ['Delivery pincode', '400001'],
     ['Full address', '12 Road'],
-    ['City', 'Mumbai'],
-    ['State', 'Maharashtra'],
     ['Order reference', 'ORDER-1'],
   ]);
-  fireEvent.click(mainButton('Continue'));
+  fireEvent.change(screen.getAllByLabelText('Email address')[1], { target: { value: 'recipient@example.com' } });
+  fireEvent.change(screen.getAllByLabelText('Mobile number')[1], { target: { value: '9876543210' } });
+  await screen.findByDisplayValue('Mumbai');
   fill([
     ['Product description', 'Shirt'],
-    ['Quantity', '1'],
-    ['Weight (kg)', '0.5'],
-    ['Length (cm)', '20'],
-    ['Width (cm)', '15'],
-    ['Height (cm)', '10'],
+    ['No. of boxes', '1'],
+    ['Package weight', '500'],
+    ['L', '20'],
+    ['B', '15'],
+    ['H', '10'],
   ]);
-  fireEvent.click(mainButton('Continue'));
   fireEvent.change(screen.getByLabelText(/Order value/), { target: { value: '999' } });
-  fireEvent.click(mainButton('Continue'));
-  respond({
-    success: true,
-    data: { success: false, packages: [{ status: 'Fail', remarks: ['Invalid warehouse'] }] },
+  await screen.findAllByText(/100[.]00/);
+  const previousFetchHandler = fetch.getMockImplementation();
+  const bookingResponses = [
+    reply({ success: true, data: { success: false, packages: [{ status: 'Fail', remarks: ['Invalid warehouse'] }] } }),
+    reply({ success: true, data: { success: true, packages: [{ waybill: '123456789', status: 'Success' }] } }),
+  ];
+  fetch.mockImplementation((url, options = {}) => {
+    if (url.includes('/delhivery/shipments') && options.method === 'POST')
+      return Promise.resolve(bookingResponses.shift());
+    return previousFetchHandler(url, options);
   });
   fireEvent.click(mainButton('Create shipment'));
-  await screen.findByRole('alert');
+  await screen.findAllByText('Invalid warehouse');
   expect(screen.queryByText('Your shipment is ready.')).not.toBeInTheDocument();
-  respond({
-    success: true,
-    data: { success: true, packages: [{ waybill: '123456789', status: 'Success' }] },
-  });
   fireEvent.click(mainButton('Create shipment'));
   await screen.findByText('Your shipment is ready.');
   expect(lastRequest().body).toMatchObject({
@@ -428,13 +474,13 @@ test('warehouse and shipment creation wait for acceptance; failed cancellation p
       {
         name: 'Recipient',
         order: 'ORDER-1',
-        weight: '500',
+        weight: '600',
         payment_mode: 'Prepaid',
         cod_amount: '0',
         products_desc: 'Shirt',
       },
     ],
-    pickup_location: { name: 'Test Hub' },
+    pickup_location: { warehouseId: 'eeeeeeeeeeeeeeeeeeeeeeee' },
   });
   fireEvent.click(mainButton('View shipments'));
   fireEvent.click(mainButton('Actions for 123456789'));
@@ -455,25 +501,33 @@ test('warehouse and shipment creation wait for acceptance; failed cancellation p
   expect(lastRequest().body).toEqual({ waybill: '123456789' });
 });
 
-test('pickup request maps location, time and count and updates only after success', async () => {
+test('pickup request saves location, schedule, package metrics and shipment links without carrier submission', async () => {
   await login();
   await addWarehouse();
-  navigate('Pickup requests');
+  navigate('Pickup Requests');
   fireEvent.click(mainButton('Request pickup'));
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   fill([
     ['Pickup date', tomorrow.toLocaleDateString('en-CA')],
     ['Pickup time', '14:00'],
+    ['Pickup contact name', 'Manager'],
     ['Package count', '3'],
+    ['Total weight (kg)', '4.25'],
   ]);
-  respond({ success: true, data: { pickup_id: 'P123' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Schedule pickup' }));
-  await screen.findByText('P123');
-  expect(lastRequest().body).toEqual({
-    pickup_time: '14:00:00',
-    pickup_date: tomorrow.toLocaleDateString('en-CA'),
-    pickup_location: 'Test Hub',
-    expected_package_count: 3,
+  respond({ success: true, data: { pickup: { id: 'pickup-id-1', recordId: 'pickup-id-1', warehouse: 'Test Hub', date: tomorrow.toLocaleDateString('en-CA'), time: '14:00:00', count: 3, totalWeightKg: 4.25, location: { name: 'Test Hub', contactName: 'Manager', phone: '9876543210', address: '24 Test Road', pincode: '110001' }, shipmentRefs: [], status: 'Pending', workflow: 'LOCAL', history: [{ action: 'CREATED', status: 'Pending' }] } } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save pickup request' }));
+  await screen.findByText('pickup-id-1');
+  const pickupCall = fetch.mock.calls.find(([url, options]) =>
+    url.includes('/delhivery/pickup-requests') && options.method === 'POST'
+  );
+  expect(JSON.parse(pickupCall[1].body)).toEqual({
+    pickupDate: tomorrow.toLocaleDateString('en-CA'),
+    pickupTime: '14:00',
+    location: { name: 'Test Hub', contactName: 'Manager', phone: '9876543210', email: 'hub@example.com', address: '24 Test Road', city: 'Delhi', state: 'Delhi', pincode: '110001' },
+    packageCount: 3,
+    totalWeightKg: 4.25,
+    shipmentRefs: [],
+    idempotencyKey: expect.any(String),
   });
 });

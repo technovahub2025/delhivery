@@ -1,4 +1,4 @@
-﻿
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   Search,
@@ -11,7 +11,7 @@ import {
 import { api } from '../../services/api';
 import './NdrManagementPage.css';
 
-const tabs = ['Need Action', 'Auto Reattempt', 'Return Recommendation'];
+const tabs = ['All cases', 'Open', 'Action pending', 'Resolved'];
 
 function getResponseData(response) {
   let value = response?.data ?? response;
@@ -24,37 +24,53 @@ function getResponseData(response) {
   return value;
 }
 
-export default function NdrManagementPage() {
-  const [tab, setTab] = useState('Need Action');
-  const [search, setSearch] = useState('');
+export default function NdrManagementPage({ dashboardFilter = null, initialSearch = '' }) {
+  const [tab, setTab] = useState('All cases');
+  const [dateFrom] = useState(dashboardFilter?.from || '');
+  const [dateTo] = useState(dashboardFilter?.to || '');
+  const [search, setSearch] = useState(initialSearch);
   const [dateRange, setDateRange] = useState('All dates');
-  const [proof, setProof] = useState('All proof');
   const [payment, setPayment] = useState('All payment modes');
-  const [attempt, setAttempt] = useState('All attempts');
 
   const [showAction, setShowAction] = useState(false);
   const [waybill, setWaybill] = useState('');
   const [action, setAction] = useState('RE-ATTEMPT');
+  const [actionDetails, setActionDetails] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All statuses');
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [selectedDetails, setSelectedDetails] = useState(null);
+  const [selectedDetailsLoading, setSelectedDetailsLoading] = useState(false);
   const [uplId, setUplId] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const dashboardShipmentMode = dashboardFilter?.target === 'shipments';
+  const [dashboardShipments, setDashboardShipments] = useState([]);
+  const [selectedDashboardShipment, setSelectedDashboardShipment] = useState(null);
   const [ndrCases, setNdrCases] = useState([]);
   const [casesLoading, setCasesLoading] = useState(true);
   const [casesError, setCasesError] = useState('');
-  const [casesChecked, setCasesChecked] = useState(0);
-  const [trackingFailed, setTrackingFailed] = useState(0);
-  const [complete, setComplete] = useState(false);
+  const [processingHistory, setProcessingHistory] = useState(false);
 
   const loadNdrCases = useCallback(async () => {
     setCasesLoading(true);
     setCasesError('');
 
     try {
-      const response = await api.ndrCases();
+      const response = dashboardShipmentMode
+        ? await api.ndrDashboardShipments({ from: dashboardFilter?.from, to: dashboardFilter?.to, status: dashboardFilter?.status, target: 'shipments' })
+        : await api.ndrCases();
       const data = getResponseData(response);
 
+      if (dashboardShipmentMode && Array.isArray(data?.shipments)) {
+        const groups = data.shipments;
+        const cases = groups.flatMap((group) => group.cases || []);
+        setDashboardShipments(groups);
+        setNdrCases(cases);
+        setSelectedCase((current) => current ? cases.find((item) => item.id === current.id) || current : null);
+        return;
+      }
       if (!Array.isArray(data?.cases)) {
         throw new Error(
           'Unexpected response from the NDR cases endpoint.'
@@ -62,23 +78,32 @@ export default function NdrManagementPage() {
       }
 
       setNdrCases(data.cases);
-      setCasesChecked(Number(data.checked) || 0);
-      setTrackingFailed(Number(data.trackingFailed) || 0);
-      setComplete(data.complete === true);
+      setSelectedCase((current) => current ? data.cases.find((item) => item.id === current.id) || current : null);
     } catch (err) {
       setCasesError(
         err.response?.data?.message ||
           err.message ||
-          'Could not load live NDR cases.'
+          'Could not load NDR cases.'
       );
     } finally {
       setCasesLoading(false);
     }
-  }, []);
+  }, [dashboardShipmentMode, dashboardFilter?.from, dashboardFilter?.to, dashboardFilter?.status]);
 
   useEffect(() => {
     loadNdrCases();
   }, [loadNdrCases]);
+
+  async function processStoredTracking() {
+    setProcessingHistory(true);
+    setCasesError('');
+    try {
+      await api.processNdrCases();
+      await loadNdrCases();
+    } catch (failure) {
+      setCasesError(failure.message || 'Stored tracking history could not be processed.');
+    } finally { setProcessingHistory(false); }
+  }
 
   const filteredCases = ndrCases.filter((item) => {
     const query = search.trim().toLowerCase();
@@ -98,6 +123,15 @@ export default function NdrManagementPage() {
     if (query && !searchable.includes(query)) {
       return false;
     }
+
+    if (tab === 'Open' && item.status !== 'OPEN' && item.status !== 'ACTION_FAILED') return false;
+    if (tab === 'Action pending' && !['ACTION_SUBMITTING', 'ACTION_SUBMITTED', 'OUTCOME_UNCONFIRMED'].includes(item.status)) return false;
+    if (tab === 'Resolved' && item.status !== 'RESOLVED') return false;
+    if (statusFilter !== 'All statuses' && item.status !== statusFilter) return false;
+    if (dashboardFilter?.target === 'unresolved' && item.status === 'RESOLVED') return false;
+    const eventDate = String(item.occurredAt || item.createdAt || '').slice(0, 10);
+    if (dateFrom && eventDate < dateFrom) return false;
+    if (dateTo && eventDate > dateTo) return false;
 
     const mode = String(item.payment || '').toLowerCase();
 
@@ -150,6 +184,24 @@ export default function NdrManagementPage() {
     return true;
   });
 
+  async function openCase(item) {
+    setSelectedCase(item);
+    if (!item.id || item.persisted === false) {
+      setSelectedDetails({ trackingEvents: item.statusHistory || [] });
+      setSelectedDetailsLoading(false);
+      return;
+    }
+    setSelectedDetails(null);
+    setSelectedDetailsLoading(true);
+    try {
+      setSelectedDetails(getResponseData(await api.ndrCase(item.id)));
+    } catch (err) {
+      setError(err.message || 'Could not load NDR case details.');
+    } finally {
+      setSelectedDetailsLoading(false);
+    }
+  }
+
   async function submitAction(event) {
     event.preventDefault();
 
@@ -160,31 +212,31 @@ export default function NdrManagementPage() {
       return;
     }
 
-    const description =
-      action === 'RE-ATTEMPT'
-        ? 'request another delivery attempt'
-        : 'request a pickup reschedule';
-
-    if (
-      !window.confirm(
-        `You are about to ${description} for ${awb}. ` +
-          'This may affect a real shipment. Have you verified its eligibility?'
-      )
-    ) {
+    const selected = ndrCases.find((item) => item.waybill === awb && item.id && item.persisted !== false) || ndrCases.find((item) => item.waybill === awb);
+    if (!selected) {
+      setError('Choose a waybill from an owner-scoped NDR case before submitting an action.');
       return;
     }
+    if (!selected.id || selected.persisted === false) {
+      setError('This tracking observation is derived and not yet a persisted NDR case. Process stored tracking history before submitting an action.');
+      return;
+    }
+    if (['CUSTOMER_CONTACT', 'DELIVERY_INSTRUCTIONS', 'MARK_RESOLVED'].includes(action) && !actionDetails.trim()) {
+      setError('Enter details for this action.');
+      return;
+    }
+    if (['RE-ATTEMPT', 'PICKUP_RESCHEDULE'].includes(action) && !window.confirm(`Submit ${action} for ${awb}? Carrier processing may not be confirmed immediately.`)) return;
 
     setLoading(true);
     setError('');
     setResult(null);
 
     try {
-      const response = await api.ndrUpdate({
-        waybill: awb,
-        act: action,
-      });
+      const response = await api.ndrCaseAction(selected.id, { action, details: actionDetails });
 
       setResult(response);
+      if (response?.data?.case) setSelectedCase(response.data.case);
+      await loadNdrCases();
 
       function findUpl(value) {
         if (!value || typeof value !== 'object') {
@@ -209,7 +261,7 @@ export default function NdrManagementPage() {
         return '';
       }
 
-      const id = findUpl(response);
+      const id = response?.data?.action?.providerRequestId || findUpl(response);
       if (id) setUplId(id);
     } catch (err) {
       setError(
@@ -217,6 +269,7 @@ export default function NdrManagementPage() {
           err.message ||
           'NDR request failed.'
       );
+      await loadNdrCases();
     } finally {
       setLoading(false);
     }
@@ -253,7 +306,7 @@ export default function NdrManagementPage() {
     <main className="ndr-page">
       <header className="ndr-heading">
         <div>
-          <div className="ndr-eyebrow">SHIPPING OPERATIONS</div>
+      <div className="ndr-eyebrow">SHIPPING OPERATIONS</div>
           <h1>
             NDR Management <Info size={17} />
           </h1>
@@ -285,24 +338,15 @@ export default function NdrManagementPage() {
       <div className="ndr-info-banner">
         <Info size={18} />
         <div>
-          <strong>Live tracking results</strong>
+          <strong>Persisted NDR records</strong>
           <p>
-            The list is built from tracking information for saved shipments
-            available to your account. It is not a complete carrier-side NDR
-            feed.
+            Cases are persisted against your saved shipments and derived from their recorded tracking events.
           </p>
 
-          {!casesLoading && trackingFailed > 0 && (
-            <p>
-              {trackingFailed} tracking request(s) failed. Results may be
-              incomplete.
-            </p>
-          )}
-
-          {!casesLoading && complete && (
-            <p>All attempted tracking checks completed successfully.</p>
-          )}
+          {!casesLoading && <p>{ndrCases.length} persisted case(s). Process stored tracking events to refresh detections.</p>}
         </div>
+
+        <button type="button" className="ndr-outline" disabled={processingHistory} onClick={processStoredTracking}>{processingHistory ? 'Processing…' : 'Process tracking history'}</button>
 
         <button
           type="button"
@@ -346,20 +390,20 @@ export default function NdrManagementPage() {
             value={dateRange}
             onChange={(event) => setDateRange(event.target.value)}
           >
-            <option>All dates</option>
+              <option>All dates</option>
             <option>Today</option>
             <option>Last 7 days</option>
             <option>Last 30 days</option>
           </select>
 
-          <select
-            aria-label="Proof filter"
-            value={proof}
-            onChange={(event) => setProof(event.target.value)}
-          >
-            <option>All proof</option>
-            <option>Proof available</option>
-            <option>No proof</option>
+          <select aria-label="NDR status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option>All statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="ACTION_SUBMITTING">Submitting</option>
+            <option value="ACTION_SUBMITTED">Submitted</option>
+            <option value="ACTION_FAILED">Failed</option>
+            <option value="OUTCOME_UNCONFIRMED">Unconfirmed</option>
+            <option value="RESOLVED">Resolved</option>
           </select>
 
           <select
@@ -372,18 +416,24 @@ export default function NdrManagementPage() {
             <option>COD</option>
           </select>
 
-          <select
-            aria-label="Attempt count"
-            value={attempt}
-            onChange={(event) => setAttempt(event.target.value)}
-          >
-            <option>All attempts</option>
-            <option>1 attempt</option>
-            <option>2 attempts</option>
-          </select>
         </div>
 
         <div className="ndr-table-scroll">
+          {dashboardShipmentMode ? <table className="ndr-table">
+            <thead><tr><th>SHIPMENT / AWB</th><th>CUSTOMER / DESTINATION</th><th>PAYMENT</th><th>NDR CASES</th><th>REASONS</th><th>LATEST EVENT</th><th>DETAILS</th></tr></thead>
+            <tbody>{dashboardShipments.filter((group) => filteredCases.some((item) => item.shipmentId === group.shipmentId)).map((group) => {
+              const related = filteredCases.filter((item) => item.shipmentId === group.shipmentId);
+              const latest = related.reduce((value, item) => String(item.occurredAt || '') > String(value?.occurredAt || '') ? item : value, null);
+              return <tr key={group.shipmentId}>
+                <td><strong>{group.reference || '—'}</strong><div>{group.waybill || '—'}</div></td>
+                <td>{group.customer || group.destination || '—'}{group.customer && group.destination ? <div>{group.destination}</div> : null}</td>
+                <td>{group.payment || '—'}</td><td>{related.length}</td>
+                <td>{[...new Set(related.map((item) => item.reason).filter(Boolean))].join('; ') || '—'}</td>
+                <td>{latest?.occurredAt ? new Date(latest.occurredAt).toLocaleString() : '—'}</td>
+                <td><button type="button" className="ndr-outline" onClick={() => setSelectedDashboardShipment({ ...group, cases: related })}>Related cases</button></td>
+              </tr>;
+            })}</tbody>
+          </table> :
           <table className="ndr-table">
             <thead>
               <tr>
@@ -398,8 +448,9 @@ export default function NdrManagementPage() {
                 <th>PRODUCT DETAILS</th>
                 <th>PAYMENT MODE</th>
                 <th>NDR TYPE / REASON</th>
-                <th>ATTEMPT COUNT</th>
+                <th>ACTION COUNT</th>
                 <th>LAST UPDATED</th>
+                <th>DETAILS</th>
               </tr>
             </thead>
 
@@ -407,7 +458,7 @@ export default function NdrManagementPage() {
               {!casesLoading &&
                 !casesError &&
                 filteredCases.map((item, index) => (
-                  <tr key={`${item.waybill || 'case'}-${index}`}>
+                  <tr key={item.id || `${item.waybill || 'case'}-${index}`} onClick={() => openCase(item)}>
                     <td>
                       <input
                         type="checkbox"
@@ -422,7 +473,7 @@ export default function NdrManagementPage() {
                     <td>{item.destination || item.customer || '—'}</td>
                     <td>{item.payment || '—'}</td>
                     <td>{item.reason || item.status || '—'}</td>
-                    <td>Not provided by tracking response</td>
+                    <td>{item.actions?.length ?? 0}</td>
                     <td>
                       {item.lastUpdated
                         ? new Date(item.lastUpdated).toLocaleString()
@@ -430,16 +481,17 @@ export default function NdrManagementPage() {
                           ? new Date(item.createdAt).toLocaleString()
                           : '—'}
                     </td>
+                    <td><button type="button" className="ndr-outline" onClick={(event) => { event.stopPropagation(); openCase(item); }}>Details</button></td>
                   </tr>
                 ))}
             </tbody>
-          </table>
+          </table>}
 
           {casesLoading && (
             <div className="ndr-empty">
               <RefreshCw size={24} />
               <h3>Loading live NDR cases…</h3>
-              <p>Checking tracking information for saved shipments.</p>
+              <p>Loading persisted NDR records.</p>
             </div>
           )}
 
@@ -469,7 +521,7 @@ export default function NdrManagementPage() {
               </h3>
               <p>
                 {ndrCases.length === 0
-                  ? 'No non-delivery cases were identified in the tracking data returned for your saved shipments.'
+                ? 'No NDR events have been recorded for your saved shipments.'
                   : 'Try changing your search or filters.'}
               </p>
             </div>
@@ -479,7 +531,7 @@ export default function NdrManagementPage() {
             <span>
               {casesLoading
                 ? 'Loading records…'
-                : `${filteredCases.length} displayed · ${casesChecked} shipments checked`}
+                : (dashboardShipmentMode ? dashboardShipments.filter((group) => filteredCases.some((item) => item.shipmentId === group.shipmentId)).length : filteredCases.length) + ' displayed'}
             </span>
 
             <button
@@ -488,9 +540,8 @@ export default function NdrManagementPage() {
               onClick={() => {
                 setSearch('');
                 setDateRange('All dates');
-                setProof('All proof');
                 setPayment('All payment modes');
-                setAttempt('All attempts');
+                setStatusFilter('All statuses');
               }}
             >
               Clear filters
@@ -498,6 +549,25 @@ export default function NdrManagementPage() {
           </div>
         </div>
       </section>
+
+      {selectedDashboardShipment && <section className="ndr-panel ndr-response" aria-label="Related NDR cases">
+        <div className="ndr-panel-title"><div><ClipboardCheck size={19} /><h2>Related NDR cases · {selectedDashboardShipment.waybill || selectedDashboardShipment.reference}</h2></div><button type="button" className="ndr-close" onClick={() => setSelectedDashboardShipment(null)}>Close</button></div>
+        <ol>{(selectedDashboardShipment.cases || []).map((item, index) => <li key={item.id || item.eventKey || index}><strong>{item.reason || item.status}</strong> · {item.status} · {item.occurredAt ? new Date(item.occurredAt).toLocaleString() : 'Time unavailable'} · {item.persisted === false ? 'Derived observation' : 'Persisted case'} <button type="button" className="ndr-outline" onClick={() => openCase(item)}>Details</button></li>)}</ol>
+      </section>}
+      {selectedCase && (
+        <section className="ndr-panel ndr-response" aria-label="NDR case details">
+          <div className="ndr-panel-title">
+            <div><ClipboardCheck size={19} /><h2>NDR case details</h2></div>
+            <button type="button" className="ndr-close" onClick={() => { setSelectedCase(null); setSelectedDetails(null); }}>Close</button>
+          </div>
+          <p><strong>{selectedCase.reference || selectedCase.waybill}</strong> · {selectedCase.waybill} · {selectedCase.status}</p>
+          <p>{selectedCase.reason}</p>
+          {selectedDetailsLoading && <p>Loading case history…</p>}
+          {selectedDetails?.trackingEvents?.length > 0 && <div><h3>Tracking events</h3><ol>{selectedDetails.trackingEvents.map((event, index) => <li key={event.eventKey || index}>{event.status} · {event.location || 'Location unavailable'} · {event.occurredAt ? new Date(event.occurredAt).toLocaleString() : 'Time unavailable'}</li>)}</ol></div>}
+          <h3>Action history</h3>
+          {selectedCase.actions?.length ? <ol>{selectedCase.actions.map((entry) => <li key={entry.id}>{entry.action} · {entry.status} · {entry.details || entry.error || 'No additional details'} · {entry.submittedAt ? new Date(entry.submittedAt).toLocaleString() : ''}</li>)}</ol> : <p>No actions have been recorded.</p>}
+        </section>
+      )}
 
       {showAction && (
         <section className="ndr-action-grid">
@@ -535,11 +605,16 @@ export default function NdrManagementPage() {
               >
                 <option value="RE-ATTEMPT">Re-attempt delivery</option>
                 <option value="PICKUP_RESCHEDULE">Reschedule pickup</option>
+                <option value="CUSTOMER_CONTACT">Record customer contact</option>
+                <option value="DELIVERY_INSTRUCTIONS">Record delivery instructions</option>
+                <option value="MARK_RESOLVED">Mark case resolved</option>
               </select>
 
+              <label htmlFor="ndr-action-details">Action details</label>
+              <textarea id="ndr-action-details" value={actionDetails} onChange={(event) => setActionDetails(event.target.value)} maxLength={1000} rows={3} placeholder="Add contact outcome, delivery instructions or resolution note" />
+
               <p className="ndr-small-note">
-                Verify the current status and eligibility before submitting.
-                Submitting an action can affect a real shipment.
+                Carrier actions are available only when the selected shipment’s courier adapter supports them. Contact notes, instructions and resolution notes are stored locally.
               </p>
 
               <button
@@ -595,12 +670,14 @@ export default function NdrManagementPage() {
 
       {result && (
         <section className="ndr-panel ndr-response">
-          <h2>API response</h2>
+          <h2>{result.data?.status === 'UNCONFIRMED' ? 'Carrier status unconfirmed' : 'API response'}</h2>
           <p>
             A response or UPL ID alone does not confirm that an NDR action
             succeeded.
           </p>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
+          {result.data?.status === 'UNCONFIRMED' ? (
+            <p role='status'>Waybill {result.data.waybill} · Upload {result.data.providerRequestId}. {result.message}</p>
+          ) : <pre>{JSON.stringify(result, null, 2)}</pre>}
         </section>
       )}
     </main>

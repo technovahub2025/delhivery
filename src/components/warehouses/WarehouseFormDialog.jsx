@@ -2,7 +2,7 @@
 import useApiAction from '../../hooks/useApiAction';
 import { Button, Field, Modal } from '../ui';
 
-export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, notify, onSaved }) {
+export default function WarehouseFormDialog({ edit, setEdit, notify, onSaved }) {
   const { busy, error, run } = useApiAction();
   return (
     <Modal title={edit.id ? 'Edit warehouse' : 'Add warehouse'} onClose={() => setEdit(null)}>
@@ -14,6 +14,7 @@ export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, noti
             const body = {
               name: d.name,
               registered_name: d.registered_name,
+              contact_name: d.contact_name,
               phone: d.phone,
               email: d.email,
               address: d.address,
@@ -27,12 +28,11 @@ export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, noti
               return_state: d.state,
               return_country: 'India',
             };
-            await (edit.id ? api.updateWarehouse(body) : api.createWarehouse(body));
-            setWarehouses((list) =>
-              edit.id
-                ? list.map((w) => (w.id === edit.id ? { ...w, ...d } : w))
-                : [...list, { ...d, id: Date.now(), primary: false }]
-            );
+            const response = await (edit.id ? api.updateWarehouse(body) : api.createWarehouse(body));
+            if (!response?.warehouse?._id && !response?.warehouse?.id) {
+              throw new Error('The backend did not return the saved MongoDB warehouse record.');
+            }
+            await onSaved?.(response.warehouse);
             setEdit(null);
             notify(edit.id ? 'Warehouse updated.' : 'New warehouse added.');
           });
@@ -58,7 +58,7 @@ export default function WarehouseFormDialog({ edit, setEdit, setWarehouses, noti
             </p>
           )}
           <div className="form-grid">
-            <Field label="Contact name" name="contact" defaultValue={edit.contact} required />
+            <Field label="Contact name" name="contact_name" defaultValue={edit.contact || edit.contact_name} required />
             <Field
               label="Phone number"
               name="phone"

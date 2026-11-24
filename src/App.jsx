@@ -27,7 +27,9 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
   const [tableSearch, setTableSearch] = useState('');
+  const [pageSearch, setPageSearch] = useState('');
   const [searchKey, setSearchKey] = useState(0);
+  const [dashboardFilter, setDashboardFilter] = useState(null);
   const workspace = useDemoWorkspace(sessionToken, user);
   const { message, notify } = useToast();
   const details = workspace.shipments.find((shipment) => shipment.id === detailId);
@@ -41,7 +43,10 @@ export default function App() {
       setCreatePrefill(options.prefill || null);
     }
     setPage(next);
-    if (next === 'shipments') setTableSearch('');
+    setPageSearch(options.search || '');
+    setDashboardFilter(options.dashboardFilter || null);
+    if (next === 'shipments') setTableSearch(options.search || '');
+    setSearchKey((key) => key + 1);
     window.scrollTo(0, 0);
   }
 
@@ -70,6 +75,10 @@ export default function App() {
     setSearchKey((key) => key + 1);
   }
 
+  function openOperationalSearchResult(result, query) {
+    navigate(result.target, { search: result.searchTerm || query });
+  }
+
   return (
     <>
       {!user ? (
@@ -88,14 +97,18 @@ export default function App() {
           <WorkspaceLayout
             page={page}
             user={user.name || user.email}
+            permissions={user.permissions}
             shipmentCount={workspace.shipments.length}
             navigate={navigate}
             onSearch={searchShipments}
+            onSearchResult={openOperationalSearchResult}
             onHelp={() => setHelpOpen(true)}
             onLogout={logout}
             notify={notify}
           >
             <WorkspacePages
+              user={user}
+              key={`${page}-${searchKey}`}
               page={page}
               workspace={workspace}
               navigate={navigate}
@@ -104,6 +117,8 @@ export default function App() {
               onDetails={(shipment) => setDetailId(shipment.id)}
               tableSearch={tableSearch}
               searchKey={searchKey}
+              pageSearch={pageSearch}
+              dashboardFilter={dashboardFilter}
             />
           </WorkspaceLayout>
           {details && (

@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from 'react';
+﻿import { useCallback, useRef, useState } from 'react';
 
 import { api, unwrap, shipmentPayload } from '../services/api';
 
@@ -17,13 +17,42 @@ export default function useDemoWorkspace(token, user) {
   const [shipments, setShipments] = useState(initialShipments);
   const {
     warehouses,
-    setWarehouses,
+    warehouseLoading,
     warehouseError,
+    legacyWarehousesDetected,
+    reloadWarehouses,
     reset: resetWarehouses,
-  } = useSavedWarehouses(user);
+  } = useSavedWarehouses(token);
   const [pickups, setPickups] = useState(initialPickups);
   const pickupLoad = useAccountPickups(token, setPickups);
   const shipmentLoad = useAccountShipments(token, setShipments);
+  const [shipmentDrafts, setShipmentDrafts] = useState([]);
+
+  const loadShipmentDrafts = useCallback(async (query, signal) => {
+    const response = query ? await api.shipmentDrafts(signal, query) : await api.shipmentDrafts();
+    const result = unwrap(response);
+    const drafts = result.drafts || [];
+    if (query) return { ...result, drafts };
+    if (generation.current === session) setShipmentDrafts(drafts);
+    return drafts;
+  }, [session]);
+
+  const saveShipmentDraft = async (data, draftId = null) => {
+    const body = { formData: data };
+    const response = draftId
+      ? await api.updateShipmentDraft(draftId, body)
+      : await api.createShipmentDraft(body);
+    const draft = unwrap(response).draft;
+    if (generation.current === session) {
+      setShipmentDrafts((rows) => [draft, ...rows.filter((item) => item.id !== draft.id)]);
+    }
+    return draft;
+  };
+
+  const getShipmentDraft = async (id) => {
+    const response = await api.shipmentDraft(id);
+    return unwrap(response).draft;
+  };
 
   async function createShipment(data) {
     const response = await api.createShipment(shipmentPayload(data));
@@ -60,12 +89,35 @@ export default function useDemoWorkspace(token, user) {
     return shipment;
   }
 
+  async function bookDraftShipment(draftId) {
+    const response = await api.bookDraftShipment(draftId);
+    const result = unwrap(response);
+    const shipment = response.shipment || result.shipment;
+    const bookingStatus = shipment?.bookingStatus || result?.bookingStatus || result?.status;
+    const awbPending = response?.success === true && Boolean(shipment) && bookingStatus === 'BOOKED_AWB_PENDING';
+    if (!shipment?.waybill && !awbPending) throw new Error('The selected courier did not return a confirmed AWB. Check booking status before retrying.');
+    const savedShipment = awbPending && shipment.bookingStatus !== 'BOOKED_AWB_PENDING'
+      ? { ...shipment, bookingStatus: 'BOOKED_AWB_PENDING' }
+      : shipment;
+    if (generation.current === session) {
+      shipmentLoad.cancel();
+      setShipments((list) => [savedShipment, ...list.filter((item) => item.id !== savedShipment.id)]);
+      setShipmentDrafts((list) => list.filter((draft) => draft.id !== draftId));
+      shipmentLoad.retry();
+    }
+    // Refresh both server-backed lists after a confirmed booking outcome. A
+    // refresh error must not turn a completed booking into a booking error.
+    await loadShipmentDrafts().catch(() => {});
+    return savedShipment;
+  }
+
   return {
     reset: () => {
       shipmentLoad.cancel();
       pickupLoad.cancel();
       generation.current += 1;
       setShipments([]);
+      setShipmentDrafts([]);
       resetWarehouses();
       setPickups([]);
     },
@@ -73,12 +125,19 @@ export default function useDemoWorkspace(token, user) {
     shipmentLoad,
     setShipments: scoped(setShipments),
     warehouses,
+    warehouseLoading,
     warehouseError,
-    setWarehouses: scoped(setWarehouses),
+    legacyWarehousesDetected,
+    reloadWarehouses,
     pickups,
     pickupLoad,
     setPickups: scoped(setPickups),
     createShipment,
+    bookDraftShipment,
+    shipmentDrafts,
+    loadShipmentDrafts,
+    saveShipmentDraft,
+    getShipmentDraft,
   };
 }
 

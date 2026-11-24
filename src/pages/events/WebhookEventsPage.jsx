@@ -1,88 +1,76 @@
 import { ArrowUpRight, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import EventDetailsDrawer from '../../components/events/EventDetailsDrawer';
-import { Badge, Empty } from '../../components/ui';
+import EventDetailsDrawer, { formatEventTime } from '../../components/events/EventDetailsDrawer';
+import { Badge, Button, Empty } from '../../components/ui';
 import PageHeading from '../../components/ui/PageHeading';
-import { events } from '../../data/demo';
+import { api, unwrap } from '../../services/api';
 
 export default function WebhookEventsPage() {
   const [query, setQuery] = useState('');
+  const [waybill, setWaybill] = useState('');
+  const [page, setPage] = useState(1);
+  const [revision, setRevision] = useState(0);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
-  const rows = events.filter((e) =>
-    `${e.waybill} ${e.status} ${e.location}`.toLowerCase().includes(query.toLowerCase())
-  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setError('');
+    setResult(null);
+    api.webhookEvents({ waybill, page }, controller.signal).then(response => {
+      if (controller.signal.aborted) return;
+      const data = unwrap(response);
+      if (!Array.isArray(data?.events) || typeof data.hasMore !== 'boolean') throw new Error('Webhook event history returned an invalid response.');
+      setResult(data);
+    }).catch(failure => {
+      if (!controller.signal.aborted) setError(failure.message || 'Webhook events could not be loaded.');
+    });
+    return () => controller.abort();
+  }, [waybill, page, revision]);
+
+  function search(event) {
+    event.preventDefault();
+    setWaybill(query.trim());
+    setPage(1);
+    setRevision(value => value + 1);
+  }
+
   return (
     <>
-      <PageHeading
-        title="Every update, accounted for."
-        eyebrow="WEBHOOK EVENTS"
-        description="Event history is not available in this workspace yet."
-      />
+      <PageHeading title="Webhook events" description="Shipment scans received from Delhivery." />
       <section className="card table-card">
-        <div className="table-toolbar">
-          <div className="search-input">
+        <form className="table-toolbar" onSubmit={search}>
+          <label className="search-input">
             <Search size={17} />
-            <input
-              aria-label="Search webhook events"
-              placeholder="Search waybill, status or location…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-          <span className="demo-pill">
-            <span />
-            Event history unavailable
-          </span>
-        </div>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>EVENT / WAYBILL</th>
-                <th>STATUS</th>
-                <th>TIMESTAMP</th>
-                <th>LOCATION</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <button className="table-link" onClick={() => setSelected(e)}>
-                      {e.waybill}
-                    </button>
-                    <small>{e.id}</small>
-                  </td>
-                  <td>
-                    <Badge>{e.status}</Badge>
-                  </td>
-                  <td>
-                    {e.timestamp.slice(0, 10)}
-                    <small>{e.timestamp.slice(11, 19)} IST</small>
-                  </td>
-                  <td>{e.location}</td>
-                  <td>
-                    <button
-                      className="icon-btn"
-                      aria-label={`View event ${e.id}`}
-                      onClick={() => setSelected(e)}
-                    >
-                      <ArrowUpRight size={17} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!rows.length && (
-            <Empty
-              title="Event history unavailable"
-              description="The backend receives shipment callbacks but does not yet provide an event history endpoint."
-            />
-          )}
-        </div>
+            <input aria-label="Filter by waybill" placeholder="Enter a waybill" value={query} onChange={e => setQuery(e.target.value)} />
+          </label>
+          <Button type="submit">Search</Button>
+          <Button type="button" variant="secondary" onClick={() => setRevision(value => value + 1)}>Refresh</Button>
+        </form>
+        {error ? <div role="alert">{error} <Button type="button" onClick={() => setRevision(value => value + 1)}>Retry</Button></div>
+          : !result ? <p role="status">Loading webhook events...</p>
+          : !result.events.length ? <Empty title="No webhook events found" />
+          : <div className="table-scroll">
+              <table>
+                <thead><tr><th>Waybill</th><th>Status</th><th>Scan time</th><th>Location</th><th>Details</th></tr></thead>
+                <tbody>{result.events.map(event => (
+                  <tr key={event.id}>
+                    <td>{event.waybill || 'Unavailable'}</td>
+                    <td><Badge>{event.status || 'Unavailable'}</Badge></td>
+                    <td>{formatEventTime(event.occurredAt)}</td>
+                    <td>{event.location || 'Unavailable'}</td>
+                    <td><button className="icon-btn" aria-label={'View event ' + event.id} onClick={() => setSelected(event)}><ArrowUpRight size={17} /></button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>}
+        {result && (page > 1 || result.hasMore) && <div className="pagination">
+          <Button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+          <span>Page {page}</span>
+          <Button type="button" disabled={!result.hasMore || page === 9999} onClick={() => setPage(page + 1)}>Next</Button>
+        </div>}
       </section>
       {selected && <EventDetailsDrawer selected={selected} setSelected={setSelected} />}
     </>

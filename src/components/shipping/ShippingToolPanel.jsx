@@ -52,6 +52,7 @@ export default function ShippingToolPanel({ type }) {
           </span>
           <h2>{type === 'pincode' ? 'Where are we delivering?' : 'Plan your shipment'}</h2>
           <p className="muted">Enter your shipment details to check with the shipping service.</p>
+          <p className="muted">These read-only enquiries do not create shipments or AWBs.</p>
           {type === 'pincode' && (
             <div className="segmented">
               {['Standard', 'Heavy'].map((t) => (
@@ -159,10 +160,15 @@ export default function ShippingToolPanel({ type }) {
               <h2>
                 {type === 'pincode' && typeof result.serviceable === 'boolean'
                   ? result.serviceable
-                    ? 'Pincode found in the delivery network'
+                    ? 'Pincode is serviceable'
                     : 'No serviceable locations found'
                   : 'Shipping results'}
               </h2>
+              {result.provenance === 'LOCAL_MOCK' && <p role="status">Sample serviceability. No carrier request was made.</p>}
+              {result.provenance === 'DELHIVERY_API' && <p role="status">Serviceability source: Delhivery API.</p>}
+              {type === 'pincode' && result.serviceability && <p className="muted">
+                Prepaid {result.serviceability.prepaid ? 'available' : 'unavailable'} ? COD {result.serviceability.cod ? 'available' : 'unavailable'}
+              </p>}
               <ApiResult value={unwrap(result)} />
             </>
           ) : (

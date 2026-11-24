@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Empty, Field, Skeleton } from '../../components/ui';
 import PageHeading from '../../components/ui/PageHeading';
+import ShippingLabel from '../../components/documents/ShippingLabel';
 import ApiResult from '../../components/ui/ApiResult';
 import { api, assertProviderSuccess, unwrap } from '../../services/api';
 import useApiAction from '../../hooks/useApiAction';
@@ -35,12 +36,13 @@ function emptyDocuments(value) {
   return false;
 }
 
-export default function ShippingDocumentsPage({ shipments }) {
-  const [waybill, setWaybill] = useState('');
+export default function ShippingDocumentsPage({ shipments, initialSearch = '' }) {
+  const [waybill, setWaybill] = useState(initialSearch);
   const [type, setType] = useState('label');
   const [result, setResult] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const { busy, error, run } = useApiAction();
+  useEffect(() => { if (initialSearch) setWaybill(initialSearch); }, [initialSearch]);
   return (
     <>
       <PageHeading
@@ -127,7 +129,7 @@ export default function ShippingDocumentsPage({ shipments }) {
         ) : result ? (
           <>
             <h2>{type === 'label' ? 'Shipping label' : 'Shipment documents'}</h2>
-            <ApiResult value={result} />
+            {result.sampleLabel ? <><ShippingLabel shipment={result.sampleLabel} /><Button type="button" onClick={() => window.print()}>Print sample label</Button></> : <ApiResult value={result} />}
           </>
         ) : (
           <Empty

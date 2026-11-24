@@ -807,7 +807,18 @@
   .warehouse-option > svg {
     display: none;
   }
+  .wizard-footer {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .wizard-footer > p {
+    flex: 1 0 100%;
+    margin: 0;
+  }
   .wizard-footer .btn {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
     font-size: 11px;
   }
   .creation-success {

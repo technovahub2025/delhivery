@@ -26,7 +26,7 @@ export default function useAccountPickups(token, setPickups) {
 
     async function load() {
       try {
-        const response = unwrap(await api.pickups(controller.signal));
+        const response = unwrap(await api.pickupRequests(controller.signal));
 
         if (controller.signal.aborted) return;
 
@@ -55,7 +55,8 @@ export default function useAccountPickups(token, setPickups) {
             typeof pickup.time !== 'string' ||
             !Number.isFinite(Number(pickup.count)) ||
             Number(pickup.count) < 1 ||
-            typeof pickup.status !== 'string'
+            typeof pickup.status !== 'string' ||
+            (pickup.totalWeightKg != null && (!Number.isFinite(Number(pickup.totalWeightKg)) || Number(pickup.totalWeightKg) <= 0))
           ) {
             throw new Error(
               'The backend returned invalid or duplicate pickup records. Please retry.'
@@ -63,7 +64,7 @@ export default function useAccountPickups(token, setPickups) {
           }
 
           ids.add(pickup.id);
-          return { ...pickup, count: Number(pickup.count) };
+          return { ...pickup, count: Number(pickup.count), totalWeightKg: pickup.totalWeightKg == null ? null : Number(pickup.totalWeightKg), history: Array.isArray(pickup.history) ? pickup.history : [], shipmentRefs: Array.isArray(pickup.shipmentRefs) ? pickup.shipmentRefs : [] };
         });
 
         if (!controller.signal.aborted) {

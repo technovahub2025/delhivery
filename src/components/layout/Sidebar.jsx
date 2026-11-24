@@ -5,6 +5,7 @@ import { navGroups } from '../../config/navigation';
 
 export default function Sidebar({
   mobile,
+  canReadRoles,
   collapsed,
   page,
   shipmentCount,
@@ -14,6 +15,7 @@ export default function Sidebar({
 }) {
   const [expandedGroups, setExpandedGroups] = useState({
     ordersPickups: true,
+    deliveryExceptions: true,
   });
 
   const toggleGroup = (key) => {
@@ -53,6 +55,7 @@ export default function Sidebar({
             <p>{group}</p>
 
             {items.map(([key, label, Icon, children]) => {
+              if (key === 'roleAdmin' && !canReadRoles) return null;
               if (children) {
                 const isExpanded = Boolean(expandedGroups[key]);
                 const childIsActive = children.some(

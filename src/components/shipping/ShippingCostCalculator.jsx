@@ -246,7 +246,7 @@ export default function ShippingCostCalculator({ navigate }) {
               <div className="rate-eyebrow">SHIPPING OPTIONS</div>
               <h2>Choose your service</h2>
             </div>
-            <span className="rate-live-label">API rate check</span>
+            <span className="rate-live-label">Delhivery provider estimate</span>
           </div>
 
           {!prices ? (
@@ -293,7 +293,7 @@ export default function ShippingCostCalculator({ navigate }) {
           )}
 
           <p className="rate-disclaimer">
-            Rates are approximate estimates from Delhivery. Final charges may differ.
+            Surface and Express prices and delivery times are provider estimates. Final charges may differ; no shipment or AWB is created by this enquiry.
             Verify shipment type and route before creating an order.
           </p>
         </section>

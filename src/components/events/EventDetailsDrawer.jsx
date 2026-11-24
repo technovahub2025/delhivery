@@ -1,27 +1,28 @@
-import { Code2 } from 'lucide-react';
-
 import { Badge, Modal } from '../ui';
+
+const eventTimeFormatter = new Intl.DateTimeFormat('en-IN', {
+  dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata',
+});
+
+export function formatEventTime(value) {
+  const date = value && new Date(value);
+  return date && Number.isFinite(date.getTime()) ? eventTimeFormatter.format(date) + ' IST' : 'Unavailable';
+}
 
 export default function EventDetailsDrawer({ selected, setSelected }) {
   return (
     <Modal title="Event details" drawer onClose={() => setSelected(null)}>
-      <div className="detail-banner">
-        <span className="quick-icon">
-          <Code2 size={24} />
-        </span>
-        <div>
-          <h2>{selected.id}</h2>
-          <p>shipment.status_updated</p>
-        </div>
-      </div>
-      <Badge>{selected.status}</Badge>
-      <h3 className="mt-6">Sample payload</h3>
-      <pre className="json-preview">
-        {JSON.stringify({ event: 'shipment.status_updated', demo: true, data: selected }, null, 2)}
-      </pre>
-      <p className="muted">
-        Historical mock event. This log does not dispatch or receive network requests.
-      </p>
+      <Badge>{selected.status || 'Unavailable'}</Badge>
+      <dl>
+        <dt>Waybill</dt><dd>{selected.waybill || 'Unavailable'}</dd>
+        <dt>Carrier order reference</dt><dd>{selected.reference || 'Unavailable'}</dd>
+        <dt>Scanned</dt><dd>{formatEventTime(selected.occurredAt)}</dd>
+        <dt>Received</dt><dd>{formatEventTime(selected.receivedAt)}</dd>
+        <dt>Location</dt><dd>{selected.location || 'Unavailable'}</dd>
+        <dt>Carrier status code</dt><dd>{selected.statusCode || 'Unavailable'}</dd>
+        <dt>Carrier status type</dt><dd>{selected.statusType || 'Unavailable'}</dd>
+      </dl>
+      {selected.description && <p>{selected.description}</p>}
     </Modal>
   );
 }

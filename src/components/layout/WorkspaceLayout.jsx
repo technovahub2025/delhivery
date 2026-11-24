@@ -9,16 +9,18 @@ export default function WorkspaceLayout({
   children,
   page,
   user,
+  permissions,
   shipmentCount,
   navigate,
   onSearch,
+  onSearchResult,
   onHelp,
   onLogout,
   notify,
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
-  const title = navGroups.flatMap((group) => group[1]).find((item) => item[0] === page)?.[1];
+  const title = navGroups.flatMap((group) => group[1]).flatMap((item) => item[3] ? [item, ...item[3]] : [item]).find((item) => item[0] === page)?.[1];
 
   useEffect(() => {
     function close(event) {
@@ -43,6 +45,7 @@ export default function WorkspaceLayout({
         />
       )}
       <Sidebar
+        canReadRoles={permissions?.includes('users.read')}
         mobile={mobile}
         collapsed={collapsed}
         page={page}
@@ -60,6 +63,7 @@ export default function WorkspaceLayout({
           user={user}
           onMenu={() => setMobile(true)}
           onSearch={onSearch}
+          onSearchResult={onSearchResult}
           onHelp={onHelp}
           onLogout={onLogout}
           notify={notify}

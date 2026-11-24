@@ -1,7 +1,8 @@
-﻿import {
+import {
   AlertTriangle,
   Box,
   Building2,
+  ContactRound,
   Calculator,
   ChevronRight,
   RotateCcw,
@@ -11,6 +12,7 @@
   FileText,
   LayoutDashboard,
   MapPin,
+  MapPinned,
   Package,
   Plus,
   Truck,
@@ -37,6 +39,7 @@ export const navGroups = [
         AlertTriangle,
         [
           ['ndr', 'NDR', RotateCcw],
+          ['rto', 'RTO Management', RotateCcw],
           ['exceptions', 'Exceptions', AlertTriangle],
         ],
       ],
@@ -57,8 +60,13 @@ export const navGroups = [
   [
     'MANAGEMENT',
     [
+      ['customers', 'Customers', ContactRound],
+      ['rateCards', 'Rate Master', Calculator],
+      ['partyAddresses', 'Saved Addresses', MapPinned],
       ['warehouses', 'Warehouses', Building2],
       ['events', 'Webhook events', Code2],
+      ['audit', 'Audit history', FileText],
+      ['roleAdmin', 'Role administration', ContactRound],
       ['reports', 'Reports', FileBarChart],
       ['finance', 'Finance', Calculator],
     ],

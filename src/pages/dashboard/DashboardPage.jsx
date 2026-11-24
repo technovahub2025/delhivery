@@ -1,10 +1,10 @@
-﻿import { AlertTriangle, Box, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Clock3, Plus, Truck, XCircle } from 'lucide-react';
+import { AlertTriangle, Box, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Clock3, Plus, Truck, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import DeliveryStatusChart from '../../components/dashboard/DeliveryStatusChart';
 import QuickActions from '../../components/dashboard/QuickActions';
 import RecentShipmentsTable from '../../components/dashboard/RecentShipmentsTable';
 import ShipmentActivityChart from '../../components/dashboard/ShipmentActivityChart';
-import ShipmentStats from '../../components/dashboard/ShipmentStats';
+import OperationalMetricCards from '../../components/dashboard/OperationalMetricCards';
 import { Button } from '../../components/ui';
 import ShipmentLoadState from '../../components/shipments/ShipmentLoadState';
 import { api, unwrap } from '../../services/api';
@@ -13,21 +13,31 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
   const [period, setPeriod] = useState('This week');
   const [actionData, setActionData] = useState(null);
   const [showBadAddressModal, setShowBadAddressModal] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [overview, setOverview] = useState(null);
+  const [overviewError, setOverviewError] = useState('');
+  const [overviewLoading, setOverviewLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-
-    api.actionRequired()
-      .then((result) => {
-        if (active) setActionData(unwrap(result));
-      })
-      .catch(() => {
-        if (active) setActionData(null);
-      });
-
+    const controller = new AbortController();
+    setOverviewLoading(true);
+    setOverviewError('');
+    api.dashboardOverview({ from: dateFrom, to: dateTo, status: statusFilter }, controller.signal)
+      .then((result) => { if (active) setOverview(unwrap(result)); })
+      .catch((error) => { if (active && error.name !== 'AbortError') setOverviewError(error.message || 'Operations summary could not be loaded.'); })
+      .finally(() => { if (active) setOverviewLoading(false); });
     return () => {
       active = false;
+      controller.abort();
     };
+  }, [dateFrom, dateTo, statusFilter]);
+  useEffect(() => {
+    let active = true;
+    api.actionRequired().then((result) => { if (active) setActionData(unwrap(result)); }).catch(() => { if (active) setActionData(null); });
+    return () => { active = false; };
   }, []);
   const normalizeStatus = (status) =>
     String(status || '')
@@ -41,7 +51,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
       statuses.includes(normalizeStatus(shipment.status))
     ).length;
 
-  const stats = [
+  const chartStats = [
     ['Total shipments', shipments.length, Box, 'orange'],
     [
       'In transit',
@@ -58,6 +68,7 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
     ],
     ['Cancelled', countStatus(['cancelled', 'canceled']), XCircle, 'red'],
   ];
+  const filterSnapshot = { from: dateFrom, to: dateTo, status: statusFilter };
   const actionRequired = [
     {
       label: 'Bad Addresses',
@@ -81,6 +92,28 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
           Create shipment
         </Button>
       </div>
+      <section className="dashboard-operational-section" aria-label="Operations summary">
+        <div className="dashboard-filter-row">
+          <div><h2>Operations summary</h2><p>Counts use records saved in this workspace.</p></div>
+          <label>From <input type="date" aria-label="Dashboard date from" value={dateFrom} max={dateTo || undefined} onChange={(event) => setDateFrom(event.target.value)} /></label>
+          <label>To <input type="date" aria-label="Dashboard date to" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} /></label>
+          <label>Shipment status <select aria-label="Dashboard shipment status" value={statusFilter} disabled={!overview?.availability?.shipmentStatusMetrics?.available} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="inTransit">In transit</option><option value="delivered">Delivered</option><option value="failedException">Failed / exception</option></select></label>
+          {(dateFrom || dateTo || statusFilter) && <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter(''); }}>Clear filters</button>}
+        </div>
+        {overviewLoading && <p role="status">Loading operations summary…</p>}
+        {overviewError && <div role="alert" className="error"><span>{overviewError}</span><button type="button" onClick={() => { setOverviewLoading(true); api.dashboardOverview({ from: dateFrom, to: dateTo, status: statusFilter }).then((result) => { setOverview(unwrap(result)); setOverviewError(''); }).catch((error) => setOverviewError(error.message || 'Retry failed.')).finally(() => setOverviewLoading(false)); }}>Retry</button></div>}
+        {!overviewLoading && !overviewError && <>
+          <OperationalMetricCards data={overview} navigate={navigate} filters={filterSnapshot} />
+          <div className="dashboard-operational-summaries">
+            <section className="card"><h3>Pickup summary</h3><p>{overview?.pickupSummary?.total ?? 0} pickup requests in range</p><div>{Object.entries(overview?.pickupSummary?.byStatus || {}).map(([status, count]) => <span key={status}>{status}: {count} </span>)}</div></section>
+            <section className="card"><h3>Delivery summary</h3><p>In transit: {overview?.deliverySummary?.inTransit ?? 'Unavailable'} · Delivered: {overview?.deliverySummary?.delivered ?? 'Unavailable'}</p><p>Failed / exception: {overview?.deliverySummary?.failedOrException ?? 'Unavailable'} · Unclassified: {overview?.deliverySummary?.unclassified ?? 0}</p></section>
+            <section className="card"><h3>RTO lifecycle</h3><p>Active: {overview?.metrics?.activeRtoCases ?? 'Unavailable'} · Completed: {overview?.metrics?.completedRtoCases ?? 'Unavailable'} · Unresolved: {overview?.metrics?.unresolvedRtoCases ?? 'Unavailable'}</p></section>
+          </div>
+          {overview?.availability?.shipmentStatusMetrics?.available === false && <p className="muted">Shipment status counts are unavailable until provider-specific status mappings are configured. Unmapped provider labels remain unclassified.</p>}
+          {overview?.availability?.rtoLifecycleMetrics?.available === false && <p className="muted">RTO lifecycle counts are unavailable until provider-specific RTO lifecycle mappings are configured.</p>}
+          <section className="card dashboard-recent-activity"><h3>Recent shipment activity</h3>{overview?.recentActivity?.length ? <ol>{overview.recentActivity.map((item) => <li key={item.id}><strong>{item.status || item.type}</strong><span>{item.reference || item.waybill || (item.pickupId ? 'Pickup request' : '')}</span><span>{item.description}</span><time>{item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Time unavailable'}</time></li>)}</ol> : <p>No stored activity in this date range.</p>}</section>
+        </>}
+      </section>
       <div className="overview-banner">
         <div className="banner-symbol">
           <Box size={33} strokeWidth={1.4} />
@@ -214,10 +247,11 @@ export default function DashboardPage({ shipments, load, navigate, onDetails }) 
         <ShipmentLoadState load={load} />
       ) : (
         <>
-          <ShipmentStats stats={stats} navigate={navigate} />
+          <div className="legacy-shipment-charts">
           <div className="chart-grid">
-            <ShipmentActivityChart shipments={shipments} period={period} setPeriod={setPeriod} />
-            <DeliveryStatusChart shipments={shipments} stats={stats} />
+              <ShipmentActivityChart shipments={shipments} period={period} setPeriod={setPeriod} />
+              <DeliveryStatusChart shipments={shipments} stats={chartStats} />
+            </div>
           </div>
           <RecentShipmentsTable shipments={shipments} navigate={navigate} onDetails={onDetails} />
         </>

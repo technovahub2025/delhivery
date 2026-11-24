@@ -1,4 +1,4 @@
-import { api, parseWaybills } from '../../services/api';
+import { api, parseWaybills, unwrap } from '../../services/api';
 import useApiAction from '../../hooks/useApiAction';
 import { Copy, Package } from 'lucide-react';
 import { useState } from 'react';
@@ -9,10 +9,59 @@ import PageHeading from '../../components/ui/PageHeading';
 function PlusIcon() {
   return <Package size={17} />;
 }
-export default function WaybillManagementPage({ notify }) {
+export default function WaybillManagementPage({ notify, accountKey }) {
+  const storageKey = 'delhivery:waybill-allocation:' + (accountKey || '');
+  const [request, setRequest] = useState(() => {
+    if (!accountKey) return null;
+    try { return JSON.parse(sessionStorage.getItem(storageKey)); }
+    catch { return null; }
+  });
+  const [allocationState, setAllocationState] = useState('');
+  const remember = (value) => {
+    setRequest(value);
+    if (!accountKey) return;
+    try {
+      if (value) sessionStorage.setItem(storageKey, JSON.stringify(value));
+      else sessionStorage.removeItem(storageKey);
+    } catch { /* The request stays available in the current view. */ }
+  };
   const { busy, error, run } = useApiAction();
   const [numbers, setNumbers] = useState([]);
   const [selected, setSelected] = useState([]);
+  function showAllocation(response) {
+    const result = unwrap(response);
+    setAllocationState(result.state);
+    if (result.state === 'CONFIRMED') {
+      const batch = parseWaybills(response);
+      setNumbers(current => [...new Set([...current, ...batch])]);
+      setSelected([]);
+      remember(null);
+      notify?.(batch.length + ' waybills available.');
+    }
+    if (result.state === 'NOT_SENT') remember(null);
+  }
+  async function submitAllocation(intent) {
+    remember(intent);
+    setAllocationState('PENDING');
+    try {
+      showAllocation(await api.waybills(intent.count, intent.requestId));
+    } catch (failure) {
+      const code = failure.details?.code || failure.code;
+      if (['DELHIVERY_FEATURE_DISABLED', 'DELHIVERY_CONFIGURATION_ERROR'].includes(code)) {
+        setAllocationState('NOT_SENT');
+        remember(null);
+      } else setAllocationState('UNCONFIRMED');
+      throw failure;
+    }
+  }
+  async function checkAllocation() {
+    try {
+      showAllocation(await api.waybillAllocation(request.requestId));
+    } catch (failure) {
+      if ((failure.details?.code || failure.code) === 'WAYBILL_ALLOCATION_NOT_FOUND') setAllocationState('NOT_FOUND');
+      throw failure;
+    }
+  }
   async function copy(value) {
     try {
       await navigator.clipboard.writeText(value);
@@ -39,12 +88,9 @@ export default function WaybillManagementPage({ notify }) {
             e.preventDefault();
             const count = Number(new FormData(e.currentTarget).get('quantity'));
             if (!Number.isInteger(count) || count < 1 || count > 10000) return;
-            run(async () => {
-              const batch = parseWaybills(await api.waybills(count));
-              setNumbers((current) => [...new Set([...current, ...batch])]);
-              setSelected([]);
-              notify(batch.length + ' waybills allocated.');
-            });
+            if (request) return;
+            const requestId = globalThis.crypto?.randomUUID?.() || ['allocation', Date.now(), Math.random().toString(16).slice(2)].join('-');
+            run(() => submitAllocation({ count, requestId }));
           }}
         >
           <Field
@@ -56,12 +102,17 @@ export default function WaybillManagementPage({ notify }) {
             defaultValue="5"
             required
           />
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy || Boolean(request)}>
             <PlusIcon />
             Generate waybills
           </Button>
           <p className="muted">Generate waybills from your shipping account.</p>
         </form>
+        {request && <div>
+          <p role="status">Allocation {request.requestId} for {request.count} waybills. {allocationState === 'UNCONFIRMED' ? 'Carrier outcome unconfirmed.' : 'Check the saved status before requesting another batch.'}</p>
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => run(checkAllocation)}>Check allocation status</Button>
+          {allocationState === 'NOT_FOUND' && <Button type="button" disabled={busy} onClick={() => run(() => submitAllocation(request))}>Submit the same request ID</Button>}
+        </div>}
       </section>
       <section className="card mt-6">
         <div className="section-head">

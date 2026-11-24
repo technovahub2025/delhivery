@@ -13,27 +13,42 @@ import {
   Edit3,
   FileText,
   XCircle,
+  Eye,
+  MapPinned,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import ShipmentActionDialog from '../../components/shipments/ShipmentActionDialog';
 import { Badge, Button, Empty } from '../../components/ui';
 import Pagination from '../../components/ui/Pagination';
 import ShipmentLoadState from '../../components/shipments/ShipmentLoadState';
+import { csvEscape } from '../../utils/csv';
 
+const dashboardTags = ['undelivered', 'outForDelivery', 'pickupPending', 'transitException'];
 const statusCards = [
   { label: 'Pending AWB', key: 'pendingAwb' },
   { label: 'Ready to ship', key: 'readyToShip' },
   { label: 'Ready for pickup', key: 'readyForPickup' },
   { label: 'In transit', key: 'inTransit' },
+  { label: 'Out for delivery', key: 'outForDelivery' },
+  { label: 'Undelivered', key: 'undelivered' },
+  { label: 'Pickup pending', key: 'pickupPending' },
+  { label: 'Transit exceptions', key: 'transitException' },
   { label: 'RTO - In transit', key: 'rtoInTransit' },
   { label: 'Delivered', key: 'delivered' },
+  { label: 'Failed / exception', key: 'failedException' },
   { label: 'All shipments', key: 'all' },
   { label: 'Shipped via third party', key: 'thirdParty' },
 ];
 
 function normalized(value) {
   return String(value ?? '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+}
+
+export function isConfirmedPendingAwb(shipment) {
+  const hasAwb = [shipment?.waybill, shipment?.awb, shipment?.waybillNumber, shipment?.trackingNumber]
+    .some((value) => String(value ?? '').trim());
+  return String(shipment?.bookingStatus || '').toUpperCase() === 'BOOKED_AWB_PENDING' && !hasAwb;
 }
 
 function getShipmentGroup(shipment) {
@@ -53,6 +68,7 @@ function getShipmentGroup(shipment) {
     return 'rtoInTransit';
   }
   if (status.includes('deliver')) return 'delivered';
+  if (status === 'failed' || status === 'exception') return 'failedException';
   if (
     status.includes('transit') ||
     status.includes('picked up') ||
@@ -80,6 +96,18 @@ function getShipmentGroup(shipment) {
   return 'readyToShip';
 }
 
+export function matchesShipmentStatusFilter(shipment, selectedStatus, dashboardStatusScope = 'all') {
+  if (dashboardStatusScope !== 'all' && !matchesShipmentStatusFilter(shipment, dashboardStatusScope)) return false;
+  if (selectedStatus === 'pendingAwb') return isConfirmedPendingAwb(shipment);
+  if (selectedStatus === 'all') return true;
+  if (dashboardTags.includes(selectedStatus)) return shipment.dashboardTags?.includes(selectedStatus) === true;
+  if (['delivered', 'inTransit', 'failedException', 'unknown'].includes(selectedStatus)
+    && typeof shipment?.dashboardStatus === 'string') {
+    return shipment.dashboardStatus === selectedStatus;
+  }
+  return getShipmentGroup(shipment) === selectedStatus;
+}
+
 function getPickupLocation(shipment) {
   return (
     shipment.pickupLocation ??
@@ -92,7 +120,7 @@ function getPickupLocation(shipment) {
 }
 
 function csvCell(value) {
-  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+  return csvEscape(value);
 }
 
 function downloadShipmentsCsv(shipments) {
@@ -136,16 +164,33 @@ export default function ShipmentsPage({
   notify,
   onDetails,
   initialSearch = '',
+  dashboardFilter = null,
 }) {
   const [query, setQuery] = useState(initialSearch);
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState(dashboardFilter?.target && ['inTransit', 'delivered', 'failedException', 'pendingAwb', ...dashboardTags].includes(dashboardFilter.target) ? dashboardFilter.target : 'all');
+  const [dashboardStatusScope, setDashboardStatusScope] = useState(dashboardFilter?.status || 'all');
+  const [dateFrom, setDateFrom] = useState(dashboardFilter?.from || '');
+  const [dateTo, setDateTo] = useState(dashboardFilter?.to || '');
   const [pickupLocation, setPickupLocation] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [menu, setMenu] = useState(null);
   const [action, setAction] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menu) return undefined;
+    const close = (event) => {
+      if (!menuRef.current?.contains(event.target)) setMenu(null);
+    };
+    const escape = (event) => { if (event.key === 'Escape') setMenu(null); };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [menu]);
 
   const safeShipments = Array.isArray(shipments) ? shipments : [];
 
@@ -160,17 +205,20 @@ export default function ShipmentsPage({
   const counts = useMemo(() => {
     const result = {
       pendingAwb: 0,
+      ...Object.fromEntries(dashboardTags.map(tag => [tag, 0])),
       readyToShip: 0,
       readyForPickup: 0,
       inTransit: 0,
       rtoInTransit: 0,
       delivered: 0,
+      failedException: 0,
       all: safeShipments.length,
       thirdParty: 0,
     };
 
     safeShipments.forEach((shipment) => {
       const group = getShipmentGroup(shipment);
+      for (const tag of dashboardTags) if (shipment.dashboardTags?.includes(tag)) result[tag] += 1;
       if (Object.prototype.hasOwnProperty.call(result, group)) {
         result[group] += 1;
       }
@@ -186,8 +234,7 @@ export default function ShipmentsPage({
       const shipmentDate = String(shipment.date ?? '').slice(0, 10);
       const location = String(getPickupLocation(shipment));
 
-      const matchesStatus =
-        selectedStatus === 'all' || group === selectedStatus;
+      const matchesStatus = matchesShipmentStatusFilter(shipment, selectedStatus, dashboardStatusScope);
       const matchesSearch =
         !search ||
         [
@@ -221,6 +268,7 @@ export default function ShipmentsPage({
     safeShipments,
     query,
     selectedStatus,
+    dashboardStatusScope,
     dateFrom,
     dateTo,
     pickupLocation,
@@ -235,7 +283,7 @@ export default function ShipmentsPage({
   );
 
   const hasFilters =
-    query || dateFrom || dateTo || pickupLocation || selectedStatus !== 'all';
+    query || dateFrom || dateTo || pickupLocation || selectedStatus !== 'all' || dashboardStatusScope !== 'all';
 
   function clearFilters() {
     setQuery('');
@@ -243,6 +291,7 @@ export default function ShipmentsPage({
     setDateTo('');
     setPickupLocation('');
     setSelectedStatus('all');
+    setDashboardStatusScope('all');
     setPage(1);
   }
 
@@ -458,6 +507,15 @@ export default function ShipmentsPage({
                   </td>
                   <td>
                     <Badge>{shipment.status || 'Unknown'}</Badge>
+                    <small>{shipment.providerOutcome === 'OUTCOME_UNCONFIRMED' || shipment.bookingStatus === 'OUTCOME_UNCONFIRMED'
+                      ? 'Provider outcome unconfirmed'
+                      : shipment.providerCode === 'MOCK_LOCAL' || shipment.mockOnly
+                        ? 'Local mock shipment'
+                        : shipment.providerOutcome === 'PROVIDER_CONFIRMED'
+                          ? `${shipment.providerCode || 'Courier'} booking confirmed`
+                          : shipment.bookingStatus === 'BOOKED_AWB_PENDING'
+                            ? 'Booking saved locally; AWB pending'
+                            : 'Stored shipment status'}</small>
                   </td>
                   <td>
                     <div className="row-actions forward-order-row-actions">
@@ -465,33 +523,40 @@ export default function ShipmentsPage({
                         type="button"
                         className="icon-btn"
                         aria-label={`Actions for ${shipment.id}`}
-                        aria-expanded={menu === shipment.id}
-                        onClick={() =>
-                          setMenu(menu === shipment.id ? null : shipment.id)
-                        }
+                        aria-expanded={menu?.id === shipment.id}
+                        onClick={(event) => {
+                          if (menu?.id === shipment.id) return setMenu(null);
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          setMenu({ id: shipment.id, top: rect.bottom + 6, left: Math.max(8, rect.right - 190) });
+                        }}
                       >
                         <MoreHorizontal size={20} />
                       </button>
 
-                      {menu === shipment.id && (
-                        <div className="dropdown row-menu">
+                      {menu?.id === shipment.id && (
+                        <div ref={menuRef} className="dropdown row-menu" style={{ top: menu.top, left: menu.left, right: 'auto' }} role="menu">
                           {[
-                            [Package, 'View details', 'view'],
+                            [Eye, 'View shipment details', 'view'],
+                            [FileText, 'Generate / download label', 'label'],
+                            [MapPinned, 'Track shipment', 'track'],
                             [Edit3, 'Edit shipment', 'edit'],
-                            [FileText, 'Update e-waybill', 'ewaybill'],
                             [XCircle, 'Cancel shipment', 'cancel'],
                           ].map(([Icon, label, type]) => (
                             <button
                               type="button"
                               key={type}
                               disabled={
-                                type === 'cancel' &&
-                                normalized(shipment.status) === 'cancelled'
+                                (['label', 'track'].includes(type) && !String(shipment.waybill ?? shipment.awb ?? shipment.trackingNumber ?? '').trim()) ||
+                                (type === 'cancel' && ['cancelled', 'delivered', 'rto', 'returned'].some(value => normalized(shipment.status).includes(value)))
                               }
                               onClick={() => {
                                 setMenu(null);
                                 if (type === 'view') {
                                   onDetails?.(shipment);
+                                } else if (type === 'label') {
+                                  navigate('documents', { search: String(shipment.waybill ?? shipment.awb ?? shipment.trackingNumber) });
+                                } else if (type === 'track') {
+                                  navigate('tracking', { search: String(shipment.waybill ?? shipment.awb ?? shipment.trackingNumber) });
                                 } else {
                                   setAction({ type, shipment });
                                 }

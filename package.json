@@ -24,6 +24,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
+  "jest": {
+    "transform": {
+      "^.+\\.(js|jsx|mjs|cjs|ts|tsx)$": "<rootDir>/config/jest/importMetaTransform.cjs"
+    }
+  },
   "eslintConfig": {
     "extends": [
       "react-app",

@@ -1,4 +1,7 @@
 ﻿import { Package, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { api, unwrap } from '../../../services/api';
+import AddProductModal from '../../products/AddProductModal';
 
 import ShipmentFormField from '../ShipmentFormField';
 import { Field } from '../../ui';
@@ -97,6 +100,10 @@ function calculateTotals(boxes) {
 }
 
 export default function PackageDetailsStep({ data, setData }) {
+  const [products, setProducts] = useState([]);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
+  useEffect(() => { const q = String(data.productSearch || '').trim(); if (!q) { setProducts([]); return undefined; } const timer = setTimeout(() => api.products({ q }).then(result => setProducts(unwrap(result)?.products || [])).catch(() => setProducts([])), 250); return () => clearTimeout(timer); }, [data.productSearch]);
+  function chooseProduct(item) { setData(current => ({ ...current, description: item.name, productCategory: item.category || current.productCategory, value: item.price, productSearch: item.sku })); setProducts([]); }
   const boxes = data.boxes?.length ? data.boxes : [createBox()];
 
   const totals = calculateTotals(boxes);
@@ -190,6 +197,8 @@ export default function PackageDetailsStep({ data, setData }) {
   }
 
   return (
+    <>
+      {catalogueOpen && <AddProductModal onClose={() => setCatalogueOpen(false)} onSaved={chooseProduct} />}
     <div className="package-details">
       <div className="info-box">
         <Package size={19} />
@@ -212,6 +221,8 @@ export default function PackageDetailsStep({ data, setData }) {
             onChange={setData}
           />
 
+          <ShipmentFormField label="Product category" name="productCategory" data={data} onChange={setData} maxLength={120} required={false} />
+          <Field label="Special handling instructions"><textarea name="handlingInstructions" maxLength={500} value={data.handlingInstructions || ''} onChange={event => setData(draft => ({ ...draft, handlingInstructions: event.target.value }))} /></Field>
           <Field label="Product search">
             <input
               type="text"
@@ -224,6 +235,8 @@ export default function PackageDetailsStep({ data, setData }) {
                 }))
               }
             />
+            {products.length > 0 && <div role="listbox" className="product-search-results">{products.map(item => <button type="button" key={item._id} onClick={() => chooseProduct(item)}>{item.name} · {item.sku} · {item.category || 'Uncategorized'} · ₹{item.price}</button>)}</div>}
+            {String(data.productSearch || '').trim() && !products.length && <button type="button" onClick={() => setCatalogueOpen(true)}>Add item to catalogue</button>}
           </Field>
         </div>
       </div>
@@ -353,8 +366,8 @@ export default function PackageDetailsStep({ data, setData }) {
               <Field label="Package weight">
                 <input
                   type="number"
-                  min="1"
-                  step="1"
+                  min={box.weightUnit === 'gm' ? '1' : '0.001'}
+                  step={box.weightUnit === 'gm' ? '1' : '0.001'}
                   placeholder="Enter weight"
                   value={box.weight}
                   onChange={(event) =>
@@ -436,5 +449,6 @@ export default function PackageDetailsStep({ data, setData }) {
         </label>
       </div>
     </div>
+    </>
   );
 }

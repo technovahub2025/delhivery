@@ -1,0 +1,395 @@
+.create-shipment-page {
+  width: min(100%, 1560px);
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.create-shipment-page,
+.create-shipment-page * {
+  box-sizing: border-box;
+}
+
+.create-shipment-page .page-heading {
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.create-shipment-page .page-heading h1 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.create-shipment-page .wizard-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 360px);
+  align-items: start;
+  gap: 24px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+}
+
+.create-shipment-page .wizard-card,
+.create-shipment-page .order-summary-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.create-shipment-page .wizard-card {
+  padding: clamp(18px, 2vw, 30px);
+}
+
+.create-shipment-page .order-summary-card {
+  position: sticky;
+  top: 20px;
+  grid-column: 2;
+  grid-row: 1;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.create-shipment-page .booking-section {
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 22px;
+  overflow: visible;
+}
+
+.create-shipment-page .booking-section + .booking-section {
+  margin-top: 22px;
+}
+
+.create-shipment-page .booking-section-heading {
+  margin: 0 0 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.create-shipment-page .create-order-section-body,
+.create-shipment-page .booking-party-section,
+.create-shipment-page .package-details,
+.create-shipment-page .package-section {
+  min-width: 0;
+}
+
+.create-shipment-page .create-order-section-body > p,
+.create-shipment-page .warehouse-options > p,
+.create-shipment-page .package-section-header p {
+  line-height: 1.6;
+}
+
+.create-shipment-page .field {
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
+.create-shipment-page .field > span {
+  min-height: 2.6em;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.create-shipment-page .field input,
+.create-shipment-page .field select,
+.create-shipment-page .field textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  font: inherit;
+}
+
+.create-shipment-page .field textarea {
+  min-height: 94px;
+  resize: vertical;
+}
+
+.create-shipment-page .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0 18px;
+  width: 100%;
+  min-width: 0;
+}
+
+.create-shipment-page [aria-labelledby="destination-heading"] .form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.create-shipment-page .pickup-choice-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.create-shipment-page .pickup-choice {
+  min-width: 0;
+  min-height: 52px;
+  line-height: 1.45;
+}
+
+.create-shipment-page .warehouse-options-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0 12px;
+}
+
+.create-shipment-page .warehouse-options-header h3,
+.create-shipment-page .warehouse-options-header p {
+  margin: 0;
+}
+
+.create-shipment-page .warehouse-options-header p {
+  margin-top: 5px;
+}
+
+.create-shipment-page .warehouse-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 20px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.create-shipment-page .warehouse-option > span,
+.create-shipment-page .warehouse-option small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-shipment-page .package-product-grid > .field:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.create-shipment-page .box-size-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
+  gap: 0 12px;
+  min-width: 0;
+}
+
+.create-shipment-page .box-size-grid > .field {
+  min-width: 0;
+}
+
+.create-shipment-page .box-size-grid > .field:nth-child(1) { grid-column: span 3; }
+.create-shipment-page .box-size-grid > .field:nth-child(2) { grid-column: span 2; }
+.create-shipment-page .box-size-grid > .field:nth-child(3) { grid-column: span 7; }
+.create-shipment-page .box-size-grid > .field:nth-child(4),
+.create-shipment-page .box-size-grid > .field:nth-child(5),
+.create-shipment-page .box-size-grid > .field:nth-child(6),
+.create-shipment-page .box-size-grid > .field:nth-child(7) { grid-column: span 3; }
+.create-shipment-page .box-size-grid > .field:nth-child(8) { grid-column: span 8; }
+.create-shipment-page .box-size-grid > .field:nth-child(9) { grid-column: span 4; }
+
+.create-shipment-page .box-add-row {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.create-shipment-page .package-weight-summary {
+  align-items: stretch;
+}
+
+.create-shipment-page .package-weight-summary > div {
+  min-width: 0;
+}
+
+.create-shipment-page .package-weight-summary strong,
+.create-shipment-page .package-weight-summary span {
+  overflow-wrap: anywhere;
+}
+
+.create-shipment-page .review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.create-shipment-page .review-grid > div {
+  min-width: 0;
+}
+
+.create-shipment-page .review-grid strong,
+.create-shipment-page .order-summary-card p,
+.create-shipment-page .order-summary-card li {
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.create-shipment-page .order-summary-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 10px;
+  min-height: 0;
+  line-height: 1.45;
+}
+
+.create-shipment-page .order-summary-row > span,
+.create-shipment-page .order-summary-row > strong {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.create-shipment-page .order-summary-row > strong {
+  text-align: right;
+}
+
+.create-shipment-page .order-summary-card h4 {
+  margin: 0 0 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.create-shipment-page .shipping-method-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.create-shipment-page .shipping-method {
+  min-width: 0;
+  min-height: 76px;
+  overflow: visible;
+}
+
+.create-shipment-page .shipping-method-main > span:last-child {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.create-shipment-page .courier-comparison-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.create-shipment-page .courier-quote-batch,
+.create-shipment-page .courier-quote-row {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-shipment-page .courier-quote-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid #edf0f5;
+}
+
+.create-shipment-page .wizard-footer {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.create-shipment-page .wizard-footer > p {
+  flex: 1 1 100%;
+  margin: 0;
+  line-height: 1.55;
+}
+
+@media (max-width: 1100px) {
+  .create-shipment-page .wizard-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    gap: 18px;
+  }
+
+  .create-shipment-page [aria-labelledby="destination-heading"] .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .create-shipment-page .wizard-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-shipment-page .order-summary-card {
+    position: static;
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .create-shipment-page .pickup-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .create-shipment-page .page-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .create-shipment-page .page-heading > .btn {
+    align-self: flex-start;
+  }
+
+  .create-shipment-page .wizard-card,
+  .create-shipment-page .order-summary-card {
+    padding: 16px;
+  }
+
+  .create-shipment-page .form-grid,
+  .create-shipment-page [aria-labelledby="destination-heading"] .form-grid,
+  .create-shipment-page .review-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .create-shipment-page .package-product-grid > .field:nth-child(3) {
+    grid-column: auto;
+  }
+
+  .create-shipment-page .box-size-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0 10px;
+  }
+
+  .create-shipment-page .box-size-grid > .field:nth-child(1),
+  .create-shipment-page .box-size-grid > .field:nth-child(2) { grid-column: span 3; }
+  .create-shipment-page .box-size-grid > .field:nth-child(3) { grid-column: 1 / -1; }
+  .create-shipment-page .box-size-grid > .field:nth-child(4),
+  .create-shipment-page .box-size-grid > .field:nth-child(5),
+  .create-shipment-page .box-size-grid > .field:nth-child(6),
+  .create-shipment-page .box-size-grid > .field:nth-child(7) { grid-column: span 2; }
+  .create-shipment-page .box-size-grid > .field:nth-child(8) { grid-column: span 4; }
+  .create-shipment-page .box-size-grid > .field:nth-child(9) { grid-column: span 2; }
+
+  .create-shipment-page .package-weight-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-shipment-page .pickup-choice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .create-shipment-page .courier-comparison-actions,
+  .create-shipment-page .courier-comparison-actions > .btn,
+  .create-shipment-page .wizard-footer > .btn {
+    width: 100%;
+  }
+
+  .create-shipment-page .courier-quote-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .create-shipment-page .order-summary-row {
+    grid-template-columns: minmax(90px, 0.8fr) minmax(0, 1.2fr);
+  }
+}

@@ -3,6 +3,11 @@ import {
   Wallet, ArrowLeftRight, FileText, TrendingUp, TrendingDown,
   RefreshCw, Download
 } from "lucide-react";
+import CreditCustomerBilling from './CreditCustomerBilling';
+import PaymentManagement from './PaymentManagement';
+import DemoWalkInPayments from './DemoWalkInPayments';
+import PartnerCostManagement from './PartnerCostManagement';
+import ProfitabilityReports from './ProfitabilityReports';
 
 const inputStyle = {
   border: "1px solid #dbe2ec",
@@ -58,7 +63,7 @@ function FinanceTable({ columns, message }) {
 }
 
 export default function FinancePage() {
-  const [section, setSection] = useState("Wallet");
+  const [section, setSection] = useState("Credit Billing");
   const [walletTab, setWalletTab] = useState("Transactions");
   const [invoiceTab, setInvoiceTab] = useState("Invoice List");
   const [search, setSearch] = useState("");
@@ -76,7 +81,11 @@ export default function FinancePage() {
   const tabs = [
     { name: "Wallet", icon: Wallet },
     { name: "Remittances", icon: ArrowLeftRight },
-    { name: "Invoices", icon: FileText }
+    { name: "Invoices", icon: FileText },
+    { name: "Credit Billing", icon: FileText },
+    { name: "Payments", icon: Wallet },
+    { name: "Partner Costs", icon: ArrowLeftRight },
+    { name: "Profitability Reports", icon: TrendingUp },
   ];
 
   const renderWallet = () => (
@@ -269,7 +278,7 @@ export default function FinancePage() {
         }}>Finance</h1>
         <p style={{
           color: "#64748b", margin: 0, lineHeight: 1.6
-        }}>Manage wallet transactions, remittances and invoices.</p>
+        }}>Manage credit billing, payments and profitability.</p>
       </div>
 
       <section style={{
@@ -312,16 +321,20 @@ export default function FinancePage() {
             gap: 12, marginBottom: 22
           }}>
             <h2 style={{ margin: 0, fontSize: 21 }}>{section}</h2>
-            <span style={{
+            {!['Credit Billing', 'Payments', 'Partner Costs', 'Profitability Reports'].includes(section) && <span style={{
               color: "#92400e", background: "#fff7ed",
               border: "1px solid #fed7aa", borderRadius: 20,
               padding: "6px 10px", fontSize: 11, fontWeight: 600
-            }}>Finance API not connected</span>
+            }}>Finance API not connected</span>}
           </div>
 
           {section === "Wallet" && renderWallet()}
           {section === "Remittances" && renderRemittances()}
           {section === "Invoices" && renderInvoices()}
+          {section === "Credit Billing" && <CreditCustomerBilling />}
+          {section === "Payments" && <><PaymentManagement /><DemoWalkInPayments /></>}
+          {section === "Partner Costs" && <PartnerCostManagement />}
+          {section === "Profitability Reports" && <ProfitabilityReports />}
 
           <div style={{
             display: "flex", justifyContent: "space-between",
@@ -330,8 +343,7 @@ export default function FinancePage() {
             borderTop: "1px solid #e2e8f0",
             color: "#64748b", fontSize: 12
           }}>
-            <span>Financial figures require a supported data source.</span>
-            <span>Showing 0 records</span>
+            {!['Credit Billing', 'Payments', 'Partner Costs', 'Profitability Reports'].includes(section) && <><span>Financial figures require a supported data source.</span><span>Showing 0 records</span></>}
           </div>
         </div>
       </section>

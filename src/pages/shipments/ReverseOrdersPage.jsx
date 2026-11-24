@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { api, unwrap } from '../../services/api';
+import AddProductModal from '../../components/products/AddProductModal';
 import './ReverseOrdersPage.css';
 
 const blankItem = () => ({ name: '', sku: '', quantity: '1' });
@@ -35,7 +36,7 @@ const blankForm = () => ({
   fragile: false,
 });
 
-export default function ReverseOrdersPage({ notify }) {
+export default function ReverseOrdersPage({ notify, warehouses = [] }) {
   const [orders, setOrders] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,9 @@ export default function ReverseOrdersPage({ notify }) {
   const [form, setForm] = useState(blankForm);
   const [lookupWaybill, setLookupWaybill] = useState('');
   const [fetchingOriginal, setFetchingOriginal] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [products, setProducts] = useState([]);
+  const [addProductOpen, setAddProductOpen] = useState(false);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -62,10 +66,12 @@ export default function ReverseOrdersPage({ notify }) {
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+  useEffect(() => { const q = productSearch.trim(); if (!q) { setProducts([]); return undefined; } const timer = setTimeout(() => api.products({ q }).then(result => setProducts(unwrap(result)?.products || [])).catch(() => setProducts([])), 250); return () => clearTimeout(timer); }, [productSearch]);
 
   function update(field, value) {
     setForm(current => ({ ...current, [field]: value }));
   }
+  function selectProduct(item) { setForm(current => ({ ...current, items: current.items.map((row, index) => index === 0 && !row.name ? { ...row, name: item.name, sku: item.sku, price: item.price, category: item.category } : row) })); setProductSearch(''); setProducts([]); }
 
       async function fetchOriginalShipment() {
     const waybill = lookupWaybill.trim();
@@ -81,45 +87,15 @@ export default function ReverseOrdersPage({ notify }) {
         throw new Error("No saved forward shipment details were returned.");
       }
 
-      // Tracking may provide the sender name; keep lookup working if tracking fails.
-      let senderName = "";
-
-      try {
-        const trackingResult = unwrap(await api.track({ waybill }));
-
-        function findSenderName(value, depth = 0) {
-          if (!value || typeof value !== "object" || depth > 8) return "";
-
-          for (const [key, item] of Object.entries(value)) {
-            const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-            if (
-              ["sendername", "consignorname"].includes(normalizedKey) &&
-              typeof item === "string" &&
-              item.trim()
-            ) {
-              return item.trim();
-            }
-          }
-
-          for (const item of Object.values(value)) {
-            const found = findSenderName(item, depth + 1);
-            if (found) return found;
-          }
-
-          return "";
-        }
-
-        senderName = findSenderName(trackingResult);
-      } catch (trackingError) {
-        console.warn("Could not fetch sender name from tracking:", trackingError.message);
-      }
-
       const dimensions =
         String(shipment.dimensions || "").match(/\d+(?:\.\d+)?/g) || [];
+      const sourceItems = Array.isArray(shipment.items) ? shipment.items : Array.isArray(shipment.products) ? shipment.products : [];
+      const items = sourceItems.filter(item => item && (item.name || item.sku)).map(item => ({ name: item.name || item.description || '', sku: item.sku || '', quantity: String(item.quantity || 1) }));
+      const warehouse = warehouses.find(item => String(item.name || '').toLowerCase() === String(shipment.warehouseSnapshot?.name || shipment.warehouse || '').toLowerCase());
 
       setForm(current => ({
         ...current,
+        reverseOrderId: current.reverseOrderId || String(shipment.waybill || waybill),
         referenceNumber: shipment.reference || current.referenceNumber,
         customerName: shipment.customer || current.customerName,
         phone: shipment.phone || current.phone,
@@ -128,20 +104,26 @@ export default function ReverseOrdersPage({ notify }) {
         pincode: String(shipment.pincode || current.pincode),
         city: shipment.destination || shipment.city || current.city,
         state: shipment.state || current.state,
-        returnWarehouse: shipment.warehouse || current.returnWarehouse,
-        clientName: senderName || current.clientName,
-        returnName: senderName || current.returnName,
+        // The registered carrier warehouse is not a seller return address.
+        // Keep operator-entered return details untouched.
         weightKg: shipment.weight != null ? String(shipment.weight) : current.weightKg,
         orderValue: shipment.value != null ? String(shipment.value) : current.orderValue,
         length: dimensions[0] || current.length,
         width: dimensions[1] || current.width,
         height: dimensions[2] || current.height,
+        items: items.length ? items : current.items,
+        returnWarehouse: current.returnWarehouse || warehouse?.name || '',
+        clientName: current.clientName || warehouse?.registered_name || '',
+        returnName: current.returnName || warehouse?.contact || '',
+        returnAddress: current.returnAddress || warehouse?.address || '',
+        returnCity: current.returnCity || warehouse?.city || '',
+        returnState: current.returnState || warehouse?.state || '',
+        returnPincode: current.returnPincode || warehouse?.pincode || '',
+        returnPhone: current.returnPhone || warehouse?.phone || '',
       }));
 
       window.alert(
-        senderName
-          ? `Shipment fetched. Sender name found: ${senderName}. Verify the registered client and return details before submitting.`
-          : "Shipment fetched. Tracking did not provide a sender name; verify the registered client and return details."
+          "Shipment fetched. Verify the registered client and return details before submitting."
       );
     } catch (error) {
       console.error("Original shipment lookup error:", error, error.details);
@@ -340,8 +322,14 @@ export default function ReverseOrdersPage({ notify }) {
             <section className="reverse-card">
               <h2>Item Details</h2>
               <p className="reverse-hint">
-                Enter the product and SKU manually. Product-catalogue search requires a separate catalogue API.
+                Search the shared product catalogue or enter an item manually.
               </p>
+              <label>Search catalogue
+                <input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search by product name or SKU" />
+              </label>
+              {products.length > 0 && <div role="listbox">{products.map(item => <button type="button" key={item._id} onClick={() => selectProduct(item)}>{item.name} · {item.sku} · {item.category || 'Uncategorized'} · ₹{item.price}</button>)}</div>}
+              {productSearch.trim() && !products.length && <button type="button" onClick={() => setAddProductOpen(true)}>Add item to catalogue</button>}
+              {addProductOpen && <AddProductModal onClose={() => setAddProductOpen(false)} onSaved={selectProduct} />}
               {form.items.map((item, index) => (
                 <div className="reverse-item" key={index}>
                   <label>Product name *
@@ -578,7 +566,7 @@ export default function ReverseOrdersPage({ notify }) {
                     <td>{order.customer || 'â€”'}</td>
                     <td>{order.returnReason || 'â€”'}</td>
                     <td>{order.returnWarehouse || order.warehouse || 'â€”'}</td>
-                    <td><span className="reverse-status">{order.status || 'Unknown'}</span></td>
+                    <td><span className="reverse-status">{order.status || 'Unknown'}</span><small>{order.providerOutcome === 'PROVIDER_CONFIRMED' ? `${order.providerCode || 'Courier'} confirmed` : order.providerOutcome === 'OUTCOME_UNCONFIRMED' ? 'Provider outcome unconfirmed' : 'Legacy operation record'}</small></td>
                   </tr>
                 ))}
               </tbody>
